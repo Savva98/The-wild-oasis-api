@@ -59,11 +59,6 @@ app.use(gestRout, guestsRout);
 app.use(authRoutPath, authRout);
 
 app.all('*', (req, res, next) => {
-  // res.status(404).json({
-  //   status: 'fail',
-  //   message: `Can't find ${req.originalUrl} on this server!`,
-  // });
-  // next();
   const err = new AppError(
     `Can't find ${req.originalUrl} on this server!`,
     404,

@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { promisify } = require('util');
 const BlackListToken = require('../models/blackListTokenModel');
 const RefreshToken = require('../models/refreshTokenModel');
 const AppError = require('../utils/appError');
@@ -12,7 +13,7 @@ function createToken(id) {
 }
 
 function createRefreshToken(id) {
-  return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
+  return jwt.sign({ id }, process.env.JWT_SEKRET_REFRESH, {
     expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
   });
 }
@@ -96,9 +97,9 @@ const getRefreshToken = catchAsync(async (req, res, next) => {
   if (!refreshToken) {
     return next(new AppError('Refresh token is missing', 400));
   }
-  const decoded = jwt.verify(
+  const decoded = await promisify(jwt.verify)(
     refreshToken,
-    process.env.JWT_REFRESH_SECRET,
+    process.env.JWT_SEKRET_REFRESH,
     (err) => {
       if (err) {
         return next(new AppError('Invalid refresh token', 403));
@@ -117,10 +118,13 @@ const getRefreshToken = catchAsync(async (req, res, next) => {
     return next(new AppError('Error checking refresh token', 500));
   }
 
-  if (blackList.value) {
+  if (blackList.value.length > 0) {
     return next(new AppError('Refresh token is blacklisted', 403));
   }
-  if (!refreshTokenDoc.value || refreshTokenDoc.value.expiresAt < Date.now()) {
+  if (
+    !refreshTokenDoc.value.token ||
+    refreshTokenDoc.value.expiresAt < Date.now()
+  ) {
     await logoutByDeletingRefreshToken(refreshToken, res);
     return next(new AppError('Invalid or expired refresh token', 401));
   }

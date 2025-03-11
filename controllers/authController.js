@@ -32,6 +32,9 @@ const signUp = catchAsync(async (req, res, next) => {
   createSendToken(user, 201, res);
 });
 const login = catchAsync(async (req, res, next) => {
+  if (req.cookies.jwt) {
+    return next(new AppError('You are already logged in', 400));
+  }
   const { email, password } = req.body;
   if (!email || !password) {
     return next(new AppError('Please provide email and password', 400));
@@ -70,7 +73,7 @@ const protect = catchAsync(async (req, res, next) => {
   } else if (req.cookies.jwt) {
     token = req.cookies.jwt;
   }
-  if (!token) {
+  if (!token || token === 'loggedout') {
     return next(new AppError('You are not logged in', 401));
   }
   const blackList = await BlacklistToken.findOne({ token });
@@ -83,9 +86,10 @@ const protect = catchAsync(async (req, res, next) => {
     token,
     process.env.JWT_SECRET,
     (err) => {
-      if (err) {
-        return next(new AppError('Invalid token', 403));
+      if (err.name === 'TokenExpiredError') {
+        return next(new AppError('Token expired', 403));
       }
+      return next(new AppError('Invalid token', 403));
     },
   );
   const currentGuest = await Guest.findById(decoded.id);
@@ -94,7 +98,7 @@ const protect = catchAsync(async (req, res, next) => {
       new AppError('The user belonging to this token no longer exist.', 401),
     );
   }
-  if (currentGuest.passwordChangedAt(decoded.iat)) {
+  if (currentGuest.changedPasswordAfter(decoded.iat)) {
     await logoutByDeletingRefreshToken(token, res);
     return next(
       new AppError('User recently changed password! Please log in again.', 401),
