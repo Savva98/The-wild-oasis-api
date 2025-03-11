@@ -24,7 +24,6 @@ const signUp = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.password,
-    role: req.body.role,
     secret: req.body.secret,
   });
   user.secret = undefined;
@@ -172,6 +171,7 @@ const resetPassword = catchAsync(async (req, res, next) => {
 
 const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
   async (req, res, next) => {
+    const { path } = req;
     const guest = await Guest.findById(req.user._id).select('+secret');
     if (guest.isMfActive) {
       return next(
@@ -187,7 +187,11 @@ const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
       secret: guest.secret,
       encoding: 'base32',
     });
-    const url = `${req.protocol}://${req.get('host')}/api/v1/auth/2fa/${code}`;
+    let url = `${req.protocol}://${req.get('host')}/api/v1/auth/2fa/${code}`;
+    if (path === '/api/v1/auth/2fa/updatePassword') {
+      url = `${req.protocol}://${req.get('host')}/api/v1/auth/updatePassword/${code}
+      `;
+    }
     await new Email(guest, url, code).sendTwoFactor();
     res.status(200).json({
       status: 'success',
@@ -218,7 +222,8 @@ const activateTwoFactory = catchAsync(async (req, res, next) => {
 });
 
 const updatePassword = catchAsync(async (req, res, next) => {
-  const { code, password, passwordConfirm, currentPassword } = req.body;
+  const { code } = req.params;
+  const { password, passwordConfirm, currentPassword } = req.body;
   if (!code) {
     return next(new AppError('Please provide two factor code', 400));
   }

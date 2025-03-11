@@ -10,6 +10,7 @@ const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
 const { router: cabinsRout, cabinRout } = require('./routes/cabinRoutes');
 const { router: guestsRout, gestRout } = require('./routes/guestRoutes');
+const { router: authRout, rout: authRoutPath } = require('./routes/authRoutes');
 const AppError = require('./utils/appError');
 const errorHandler = require('./controllers/errorController');
 
@@ -55,6 +56,7 @@ app.use(hpp());
 
 app.use(cabinRout, cabinsRout);
 app.use(gestRout, guestsRout);
+app.use(authRoutPath, authRout);
 
 app.all('*', (req, res, next) => {
   // res.status(404).json({
