@@ -1,0 +1,10 @@
+# Ignore configuration files
+config.json
+config.yaml
+config.xml
+config.env
+node_modules
+data
+public
+logs
+tmp
