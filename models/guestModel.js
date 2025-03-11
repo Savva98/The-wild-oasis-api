@@ -44,8 +44,8 @@ const guestSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: [`${process.env.USER_ROLE}`, `${process.env.ADMIN_ROLE}`],
-    default: `${process.env.USER_ROLE}`,
+    enum: ['guest', 'admin'],
+    default: 'guest',
   },
   passwordConfirm: {
     type: String,
