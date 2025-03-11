@@ -36,6 +36,7 @@ const guestSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide a password!'],
     select: false,
+    minlength: 8,
   },
   secret: {
     type: String,
@@ -43,8 +44,8 @@ const guestSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['guest', 'admin'],
-    default: 'user',
+    enum: [`${process.env.USER_ROLE}`, `${process.env.ADMIN_ROLE}`],
+    default: `${process.env.USER_ROLE}`,
   },
   passwordConfirm: {
     type: String,

@@ -5,8 +5,10 @@ const jwt = require('jsonwebtoken');
 const { catchAsync } = require('../utils/catchAsync');
 
 const AppError = require('../utils/appError');
+
 const Guest = require('../models/guestModel');
 const BlacklistToken = require('../models/blackListTokenModel');
+
 const Email = require('../utils/email');
 const {
   logoutByDeletingRefreshToken,
