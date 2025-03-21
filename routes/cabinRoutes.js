@@ -13,12 +13,12 @@ const cabinRout = '/api/v1/cabins';
 const router = express.Router();
 
 router.get('/', getAllCabins);
+router.route('/top-5-cheap').get(top5CheapCabins, getAllCabins);
 router
   .route('/:id')
   .get(getCabin)
   .patch(protect, restrictTo('admin'), updateCabin)
   .delete(protect, restrictTo('admin'), deleteCabin);
 router.route('/addCabin').post(protect, restrictTo('admin'), addCabin);
-router.route('/top-5-cheap').get(top5CheapCabins);
 
 module.exports = { router, cabinRout };
