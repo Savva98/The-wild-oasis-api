@@ -1,6 +1,22 @@
+const multer = require('multer');
 const Guest = require('../models/guestModel');
 const AppError = require('../utils/appError');
 const { getAll, getOne, deleteOne } = require('./handleFactory');
+
+const multerStorage = multer.memoryStorage();
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image')) {
+    cb(null, true);
+  } else {
+    cb(new AppError('Not an image!', 400), false);
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+});
+const uploadUserPhoto = upload.single('photo');
 
 const checkUploadedData = (req, res, next) => {
   if (
@@ -22,4 +38,11 @@ const checkUploadedData = (req, res, next) => {
 };
 const getAllGuests = getAll(Guest);
 const getGuest = getOne(Guest);
-module.exports = { getAllGuests, getGuest };
+const deleteGuest = deleteOne(Guest);
+module.exports = {
+  getAllGuests,
+  getGuest,
+  checkUploadedData,
+  deleteGuest,
+  uploadUserPhoto,
+};

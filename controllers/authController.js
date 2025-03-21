@@ -179,11 +179,6 @@ const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
   async (req, res, next) => {
     const { path } = req;
     const guest = await Guest.findById(req.user._id).select('+secret');
-    if (guest.isMfActive) {
-      return next(
-        new AppError('Two factor authentication is already enabled!', 400),
-      );
-    }
     if (!guest.secret) {
       const secret = speakeasy.generateSecret({}).base32;
       guest.addSecret(secret);
