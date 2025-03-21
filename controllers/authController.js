@@ -32,7 +32,7 @@ const signUp = catchAsync(async (req, res, next) => {
   createSendToken(user, 201, res);
 });
 const login = catchAsync(async (req, res, next) => {
-  if (req.cookies.jwt) {
+  if (req.cookies.jwt && req.cookies.jwt !== 'loggedout') {
     return next(new AppError('You are already logged in', 400));
   }
   const { email, password } = req.body;

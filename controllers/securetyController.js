@@ -27,11 +27,11 @@ async function storeRefreshToken(refreshToken, userId) {
     expiresAt: expiresAt,
   });
 }
-function createSendToken(user, statusCode, res) {
+async function createSendToken(user, statusCode, res) {
   const token = createToken(user._id);
   const refreshToken = createRefreshToken(user._id);
   storeRefreshToken(refreshToken, user._id);
-  const csrfToken = user.addCSRFToken();
+  const csrfToken = await user.addCSRFToken();
   const cookieOptions = {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,

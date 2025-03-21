@@ -1,7 +1,12 @@
 const multer = require('multer');
 const Cabin = require('../models/cabinModel');
-const { deleteOne, updateOne } = require('../models/guestModel');
-const { getAll, getOne, createOne } = require('./handleFactory');
+const {
+  getAll,
+  getOne,
+  createOne,
+  deleteOne,
+  updateOne,
+} = require('./handleFactory');
 
 const multerStorage = multer.memoryStorage();
 const multerFilter = (req, file, cb) => {
@@ -22,6 +27,13 @@ const uploadCabinImages = upload.fields([
   { name: 'images', maxCount: 3 },
 ]);
 
+const top5CheapCabins = (req, res, next) => {
+  req.query.limit = '5';
+  req.query.sort = 'regularPrice';
+  req.query.fields = 'name,regularPrice,description';
+  next();
+};
+
 const getAllCabins = getAll(Cabin);
 const getCabin = getOne(Cabin);
 const addCabin = createOne(Cabin);
@@ -35,4 +47,5 @@ module.exports = {
   deleteCabin,
   updateCabin,
   uploadCabinImages,
+  top5CheapCabins,
 };

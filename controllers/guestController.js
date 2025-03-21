@@ -39,10 +39,15 @@ const checkUploadedData = (req, res, next) => {
 const getAllGuests = getAll(Guest);
 const getGuest = getOne(Guest);
 const deleteGuest = deleteOne(Guest);
+const getMe = (req, res, next) => {
+  req.params.id = req.user.id;
+  next();
+};
 module.exports = {
   getAllGuests,
   getGuest,
   checkUploadedData,
   deleteGuest,
   uploadUserPhoto,
+  getMe,
 };

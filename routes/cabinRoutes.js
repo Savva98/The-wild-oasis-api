@@ -5,6 +5,7 @@ const {
   addCabin,
   updateCabin,
   deleteCabin,
+  top5CheapCabins,
 } = require('../controllers/cabinsContoller');
 const { protect, restrictTo } = require('../controllers/authController');
 
@@ -18,5 +19,6 @@ router
   .patch(protect, restrictTo('admin'), updateCabin)
   .delete(protect, restrictTo('admin'), deleteCabin);
 router.route('/addCabin').post(protect, restrictTo('admin'), addCabin);
+router.route('/top-5-cheap').get(top5CheapCabins);
 
 module.exports = { router, cabinRout };
