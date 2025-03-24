@@ -107,7 +107,8 @@ guestSchema.methods.createPasswordResetToken = function () {
 
 guestSchema.methods.addCSRFToken = async function () {
   const csrfToken = crypto.randomBytes(32).toString('hex');
-  await this.updateOne({ $set: { csrfToken } });
+  const hash = crypto.createHash('sha256').update(csrfToken).digest('hex');
+  await this.updateOne({ $set: { csrfToken: hash } });
   return csrfToken;
 };
 

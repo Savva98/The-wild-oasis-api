@@ -7,6 +7,7 @@ const {
   deleteOne,
   updateOne,
 } = require('./handleFactory');
+const AppError = require('../utils/appError');
 
 const multerStorage = multer.memoryStorage();
 const multerFilter = (req, file, cb) => {
@@ -34,6 +35,19 @@ const top5CheapCabins = (req, res, next) => {
   next();
 };
 
+const checkUploadedData = (req, res, next) => {
+  if (
+    !req.body.name ||
+    !req.body.maxCapacity ||
+    !req.body.regularPrice ||
+    !req.body.discount ||
+    !req.body.description
+  ) {
+    return next(new AppError('Please provide all the required fields', 400));
+  }
+  next();
+};
+
 const getAllCabins = getAll(Cabin);
 const getCabin = getOne(Cabin);
 const addCabin = createOne(Cabin);
@@ -48,4 +62,5 @@ module.exports = {
   updateCabin,
   uploadCabinImages,
   top5CheapCabins,
+  checkUploadedData,
 };

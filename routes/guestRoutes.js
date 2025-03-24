@@ -4,6 +4,7 @@ const {
   getMe,
   getGuest,
   deleteGuest,
+  updateUserData,
 } = require('../controllers/guestController');
 const { protect, restrictTo } = require('../controllers/authController');
 const { validateCSRFToken } = require('../controllers/securetyController');
@@ -16,5 +17,6 @@ router.use(restrictTo('admin'));
 router.get('/', getAllGuests);
 router.get('/me', getMe, getGuest);
 router.delete('/deleteMe', validateCSRFToken, getMe, deleteGuest);
+router.patch('/updateMe', validateCSRFToken, updateUserData);
 
 module.exports = { router, gestRout };

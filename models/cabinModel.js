@@ -35,5 +35,7 @@ const cabinSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   },
 );
+cabinSchema.index({ regularPrice: 1, discount: 1 });
+
 const Cabin = mongoose.model('Cabin', cabinSchema);
 module.exports = Cabin;
