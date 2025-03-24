@@ -116,8 +116,10 @@ guestSchema.methods.correctCSRFToken = function (token) {
   const hash = crypto.createHash('sha256').update(token).digest('hex');
   return this.csrfToken === hash;
 };
-guestSchema.methods.addSecret = function (secret) {
+guestSchema.methods.addSecret = async function (secret) {
   this.secret = secret;
+  await this.updateOne({ $set: { secret } });
+  return secret;
 };
 
 guestSchema.methods.updateMfActive = async function () {

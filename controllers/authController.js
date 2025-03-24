@@ -181,8 +181,7 @@ const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
     const guest = await Guest.findById(req.user._id).select('+secret');
     if (!guest.secret) {
       const secret = speakeasy.generateSecret({}).base32;
-      guest.addSecret(secret);
-      await guest.save({ validateBeforeSave: false });
+      await guest.addSecret(secret);
     }
     const code = speakeasy.totp({
       secret: guest.secret,
