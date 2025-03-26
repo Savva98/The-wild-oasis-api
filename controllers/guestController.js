@@ -1,4 +1,5 @@
 const multer = require('multer');
+const sharp = require('sharp');
 const Guest = require('../models/guestModel');
 const AppError = require('../utils/appError');
 const { getAll, getOne, deleteOne } = require('./handleFactory');
@@ -18,8 +19,24 @@ const upload = multer({
   fileFilter: multerFilter,
 });
 const uploadUserPhoto = upload.single('photo');
+const resizeUserPhoto = catchAsync(async (req, res, next) => {
+  if (!req.file) return next();
+
+  req.file.filename = `guest-${req.user.id}-${Date.now()}.jpeg`;
+
+  await sharp(req.file.buffer)
+    .resize(500, 500)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`Front-end/public/guests/${req.file.filename}`);
+
+  next();
+});
 
 const checkUploadedData = (req, res, next) => {
+  if (!req.body.name || !req.body.email) {
+    return next(new AppError('Invalid data uploaded', 400));
+  }
   if (
     req.user.email === req.body.email &&
     req.body.name === req.user.name &&
@@ -87,4 +104,5 @@ module.exports = {
   uploadUserPhoto,
   getMe,
   updateUserData,
+  resizeUserPhoto,
 };

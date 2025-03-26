@@ -1,6 +1,6 @@
 const crypto = require('crypto');
-const { promisify } = require('util');
 const speakeasy = require('speakeasy');
+const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 const { catchAsync } = require('../utils/catchAsync');
 
@@ -58,9 +58,11 @@ const logout = catchAsync(async (req, res, next) => {
     return next(new AppError('You are not logged in', 401));
   }
   await logoutByDeletingRefreshToken(token, res);
-  res.status(204).json({
-    status: 'success',
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
   });
+  res.status(200).json({ status: 'success' });
 });
 
 const protect = catchAsync(async (req, res, next) => {
@@ -79,19 +81,32 @@ const protect = catchAsync(async (req, res, next) => {
   const blackList = await BlacklistToken.findOne({ token });
   if (blackList) {
     await logoutByDeletingRefreshToken(token, res);
+    res.cookie('jwt', 'loggedout', {
+      expires: new Date(Date.now() + 10 * 1000),
+      httpOnly: true,
+    });
     return next(new AppError('Token is blacklisted', 403));
   }
 
-  const decoded = await promisify(jwt.verify)(
-    token,
-    process.env.JWT_SECRET,
-    (err) => {
-      if (err.name === 'TokenExpiredError') {
-        return next(new AppError('Token expired', 403));
-      }
-      return next(new AppError('Invalid token', 403));
-    },
-  );
+  let decoded;
+  try {
+    // Verify the token
+    decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      // // Handle expired token
+      // await logoutByDeletingRefreshToken(token, res);
+      // res.cookie('jwt', 'loggedout', {
+      //   expires: new Date(Date.now() + 10 * 1000),
+      //   httpOnly: true,
+      // });
+      return next(
+        new AppError('Token expired. Please refresh your token.', 401),
+      );
+    }
+    return next(new AppError('Invalid token', 403));
+  }
+
   const currentGuest = await Guest.findById(decoded.id);
   if (!currentGuest) {
     return next(
@@ -100,6 +115,10 @@ const protect = catchAsync(async (req, res, next) => {
   }
   if (currentGuest.changedPasswordAfter(decoded.iat)) {
     await logoutByDeletingRefreshToken(token, res);
+    res.cookie('jwt', 'loggedout', {
+      expires: new Date(Date.now() + 10 * 1000),
+      httpOnly: true,
+    });
     return next(
       new AppError('User recently changed password! Please log in again.', 401),
     );
@@ -179,10 +198,14 @@ const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
   async (req, res, next) => {
     const { path } = req;
     const guest = await Guest.findById(req.user._id).select('+secret');
+    if (guest.isMfActive && path !== '/api/v1/auth/2fa/updatePassword') {
+      return next(
+        new AppError('Two factor authentication is already enabled', 400),
+      );
+    }
     if (!guest.secret) {
       const secret = speakeasy.generateSecret({}).base32;
-      guest.addSecret(secret);
-      await guest.save({ validateBeforeSave: false });
+      await guest.addSecret(secret);
     }
     const code = speakeasy.totp({
       secret: guest.secret,
@@ -202,7 +225,7 @@ const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
 );
 
 const activateTwoFactory = catchAsync(async (req, res, next) => {
-  const { code } = req.params.code;
+  const { code } = req.params;
   if (!code) {
     return next(new AppError('Please provide two factor code', 400));
   }

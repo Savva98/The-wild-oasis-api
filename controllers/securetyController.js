@@ -56,16 +56,17 @@ async function createSendToken(user, statusCode, res) {
 }
 
 async function logoutByDeletingRefreshToken(token, res) {
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  if (!token) {
+    return new AppError('Token is missing', 400);
+  }
+  const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+    ignoreExpiration: true,
+  });
   await BlackListToken.create({
     token,
     expiresAt: new Date(decoded.exp * 1000),
   });
   await RefreshToken.findOneAndDelete({ user: decoded.id });
-  res.cookie('jwt', 'loggedout', {
-    expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
-  });
 }
 const generateCSRFToken = catchAsync(async (req, res, next) => {
   const guest = await Guest.findById(req.user._id).select('+csrfToken');
@@ -80,7 +81,7 @@ const generateCSRFToken = catchAsync(async (req, res, next) => {
 });
 
 const validateCSRFToken = catchAsync(async (req, res, next) => {
-  const token = req.headers['csrf-token'] ?? '';
+  const token = req.headers['x-csrf-token'] ?? '';
   if (!token) {
     return next(new AppError('CSRF token is missing', 403));
   }
@@ -97,15 +98,16 @@ const getRefreshToken = catchAsync(async (req, res, next) => {
   if (!refreshToken) {
     return next(new AppError('Refresh token is missing', 400));
   }
-  const decoded = await promisify(jwt.verify)(
-    refreshToken,
-    process.env.JWT_SEKRET_REFRESH,
-    (err) => {
-      if (err) {
-        return next(new AppError('Invalid refresh token', 403));
-      }
-    },
-  );
+  let decoded;
+  try {
+    // Verify the refresh token
+    decoded = await promisify(jwt.verify)(
+      refreshToken,
+      process.env.JWT_SEKRET_REFRESH,
+    );
+  } catch (err) {
+    return next(new AppError('Invalid refresh token', 403));
+  }
   const results = await Promise.allSettled([
     BlackListToken.find({ token: refreshToken }),
     RefreshToken.findOne({ token: refreshToken, user: decoded.id }),
@@ -126,6 +128,10 @@ const getRefreshToken = catchAsync(async (req, res, next) => {
     refreshTokenDoc.value.expiresAt < Date.now()
   ) {
     await logoutByDeletingRefreshToken(refreshToken, res);
+    res.cookie('jwt', 'loggedout', {
+      expires: new Date(Date.now() + 10 * 1000),
+      httpOnly: true,
+    });
     return next(new AppError('Invalid or expired refresh token', 401));
   }
   await BlackListToken.create({
