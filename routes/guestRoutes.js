@@ -5,6 +5,9 @@ const {
   getGuest,
   deleteGuest,
   updateUserData,
+  uploadUserPhoto,
+  resizeUserPhoto,
+  checkUploadedData,
 } = require('../controllers/guestController');
 const { protect, restrictTo } = require('../controllers/authController');
 const { validateCSRFToken } = require('../controllers/securetyController');
@@ -13,10 +16,18 @@ const gestRout = '/api/v1/guests';
 
 const router = express.Router();
 router.use(protect);
-router.use(restrictTo('admin'));
-router.get('/', getAllGuests);
 router.get('/me', getMe, getGuest);
 router.delete('/deleteMe', validateCSRFToken, getMe, deleteGuest);
-router.patch('/updateMe', validateCSRFToken, updateUserData);
+router.patch(
+  '/updateMe',
+  validateCSRFToken,
+  checkUploadedData,
+  uploadUserPhoto,
+  resizeUserPhoto,
+  updateUserData,
+);
+router.use(restrictTo('admin'));
+router.get('/', getAllGuests);
+router.route('/:id').get(getGuest).delete(deleteGuest);
 
 module.exports = { router, gestRout };

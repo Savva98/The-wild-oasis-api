@@ -20,11 +20,11 @@ const router = express.Router();
 
 router.post('/signup', signUp);
 router.post('/login', login);
+router.post('/logout', logout);
 router.get('/forgotPassword', forgotPassword);
 router.post('/resetPassword/:token', resetPassword);
 router.post('/refreshToken', getRefreshToken);
 router.use(protect);
-router.post('/logout', logout);
 router.get('/sendTwoFactorAuth', sendTwoFactorCodeToCurrentlyLoginuser);
 router.post('/2fa/:code', activateTwoFactory);
 router.get('/2fa/updatePassword', sendTwoFactorCodeToCurrentlyLoginuser);

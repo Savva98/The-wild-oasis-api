@@ -36,6 +36,22 @@ const top5CheapCabins = (req, res, next) => {
 };
 
 const checkUploadedData = (req, res, next) => {
+  const allowedFields = [
+    'name',
+    'maxCapacity',
+    'regularPrice',
+    'discount',
+    'description',
+    'image',
+    'images',
+  ];
+  const uploadedFields = Object.keys(req.body);
+  const isAllowed = uploadedFields.every((field) =>
+    allowedFields.includes(field),
+  );
+  if (!isAllowed) {
+    return next(new AppError('Invalid data uploaded', 400));
+  }
   if (
     !req.body.name ||
     !req.body.maxCapacity ||

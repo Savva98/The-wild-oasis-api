@@ -4,7 +4,7 @@ class Email extends Transporter {
   constructor(user, url, code) {
     super();
     this.to = user.email;
-    this.firstName = user.name.split(' ')[0];
+    this.firstName = user.fullName.split(' ')[0];
     this.url = url;
     this.from = `Guest <${process.env.EMAIL_FROM}>`;
     this.code = code;

@@ -119,7 +119,10 @@ guestSchema.methods.correctCSRFToken = function (token) {
 guestSchema.methods.addSecret = async function (secret) {
   this.secret = secret;
   await this.updateOne({ $set: { secret } });
+<<<<<<< HEAD
   return secret;
+=======
+>>>>>>> adding-functionality
 };
 
 guestSchema.methods.updateMfActive = async function () {

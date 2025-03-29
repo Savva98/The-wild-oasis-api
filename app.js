@@ -4,6 +4,7 @@ const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const cors = require('cors');
 const monogoSenitize = require('express-mongo-sanitize');
 const { filterXSS } = require('xss');
 const hpp = require('hpp');
@@ -15,8 +16,24 @@ const AppError = require('./utils/appError');
 const errorHandler = require('./controllers/errorController');
 
 const app = express();
+const corsOptions = {
+  origin: 'http://localhost:5173',
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'", 'https:', 'http:', 'data:', 'ws:'],
+      },
+      XMLHttpRequest: {
+        'connect-src': ["'self'", 'https:', 'http:', 'ws:'],
+      },
+    },
+  }),
+);
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -65,6 +82,7 @@ app.all('*', (req, res, next) => {
   );
   next(err);
 });
+app.options('*', cors(corsOptions));
 
 app.use(errorHandler);
 
