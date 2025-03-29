@@ -18,9 +18,7 @@ const getAll = (Model) =>
     res.status(200).json({
       status: 'success',
       results: doc.length,
-      data: {
-        [Model.collection.name]: doc,
-      },
+      [Model.collection.name]: doc,
     });
   });
 
