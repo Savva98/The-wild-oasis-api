@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const cors = require('cors');
+const path = require('path');
 const monogoSenitize = require('express-mongo-sanitize');
 const { filterXSS } = require('xss');
 const hpp = require('hpp');
@@ -34,6 +35,7 @@ app.use(
     },
   }),
 );
+app.use(express.static(path.join(__dirname, 'public')));
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));

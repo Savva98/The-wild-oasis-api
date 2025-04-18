@@ -47,7 +47,10 @@ const bookingSchema = new mongoose.Schema(
 );
 
 bookingSchema.pre(/^find/, function (next) {
-  this.populate({ path: 'guestId', select: 'fullName email' }).populate({
+  this.populate({
+    path: 'guestId',
+    select: 'fullName email nationality countryFlag',
+  }).populate({
     path: 'cabinId',
     select: 'name',
   });
@@ -57,11 +60,6 @@ bookingSchema.pre(/^find/, function (next) {
 bookingSchema.pre('save', function (next) {
   this.startDate = new Date(this.startDate);
   this.endDate = new Date(this.endDate);
-  next();
-});
-
-bookingSchema.pre(/^findOneAnd/, async function (next) {
-  this.populate('guestId').populate('cabinId');
   next();
 });
 

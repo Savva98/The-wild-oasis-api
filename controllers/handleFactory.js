@@ -6,11 +6,12 @@ const getAll = (Model) =>
   catchAsync(async (req, res, next) => {
     // let filter = {};
     // if(Model.collection.name === '')
-    const feature = new ApiFeatures(Model.find(), req.query)
-      .filter()
-      .sort()
-      .limitFields()
-      .paginate();
+
+    const feature = new ApiFeatures(Model.find(), req.query);
+    if (req.baseUrl.includes('bookings')) {
+      feature.getBydate().getAfterDate();
+    }
+    feature.filter().sort().limitFields().paginate();
     const doc = await feature.query;
     if (!doc) {
       return next(new AppError('No document found', 404));
