@@ -1,8 +1,6 @@
 const multer = require('multer');
-const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const Cabin = require('../models/cabinModel');
 const {
   getAll,
@@ -14,6 +12,8 @@ const {
 const AppError = require('../utils/appError');
 const { catchAsync } = require('../utils/catchAsync');
 const { resizeImage } = require('../utils/resizingImages');
+const { resizeOne } = require('../utils/resizeOne');
+const { resizeAll } = require('../utils/resizeAll');
 
 const multerStorage = multer.memoryStorage();
 const multerFilter = (req, file, cb) => {
@@ -41,29 +41,10 @@ const resizeCabinImages = catchAsync(async (req, res, next) => {
   );
   // console.log(req.body);
   if (req.files.image && !req.files.images) {
-    const imageId = crypto.randomBytes(5).toString('hex');
-    req.body.image = `cabin-${req.body.name}-${imageId}-${Date.now()}.jpeg`;
-    await sharp(req.files.image[0].buffer)
-      .resize(2000, 1333)
-      .toFormat('jpeg')
-      .jpeg({ quality: 90 })
-      .toFile(`${cabinImagePath}/${req.body.image}`);
-    return next();
+    resizeOne(req, res, next, cabinImagePath);
   }
   if (req.files.images && !req.files.image) {
-    req.body.images = [];
-    await Promise.all(
-      req.files.images.map(async (file, i) => {
-        const filename = `cabin-${req.params.id}-${Date.now()}-${i + 1}.jpeg`;
-        await sharp(file.buffer)
-          .resize(2000, 1333)
-          .toFormat('jpeg')
-          .jpeg({ quality: 90 })
-          .toFile(`../../Front-end/public/img/cabins/${filename}`);
-        req.body.images.push(filename);
-      }),
-    );
-    return next();
+    resizeAll(req, res, next, cabinImagePath);
   }
   resizeImage(req, res, next);
   next();
