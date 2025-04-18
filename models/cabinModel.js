@@ -20,7 +20,6 @@ const cabinSchema = new mongoose.Schema(
     },
     image: {
       type: String,
-      required: [true, 'Please provide the image of the cabin!'],
     },
     created_at: {
       type: Date,

@@ -7,6 +7,9 @@ const {
   deleteCabin,
   top5CheapCabins,
   checkUploadedData,
+  checkCabinName,
+  uploadCabinImages,
+  resizeCabinImages,
 } = require('../controllers/cabinsContoller');
 const { protect, restrictTo } = require('../controllers/authController');
 
@@ -22,6 +25,13 @@ router
   .delete(protect, restrictTo('admin'), deleteCabin);
 router
   .route('/addCabin')
-  .post(protect, restrictTo('admin'), checkUploadedData, addCabin);
+  // .post(protect, restrictTo('admin'), checkUploadedData, addCabin);
+  .post(
+    uploadCabinImages,
+    resizeCabinImages,
+    checkCabinName,
+    checkUploadedData,
+    addCabin,
+  );
 
 module.exports = { router, cabinRout };
