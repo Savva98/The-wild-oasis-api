@@ -37,7 +37,7 @@ class ApiFeatures {
       const sortBy = this.queryString.sort.split(',').join('');
       this.query = this.query.sort(sortBy);
     } else {
-      this.query = this.query.sort('regularPrice');
+      this.query = this.query.sort('name');
     }
     return this;
   }
@@ -57,6 +57,29 @@ class ApiFeatures {
     const limit = this.queryString.limit * 1 || 10;
     const skip = (page - 1) * limit;
     this.query = this.query.skip(skip).limit(limit);
+    return this;
+  }
+
+  getBydate() {
+    if (this.queryString.date) {
+      const startDate = new Date(this.queryString.date);
+
+      this.query = this.query
+        .find({
+          createdAt: { $gte: startDate, $lte: new Date() },
+        })
+        .select('createdAt totalPrice extrasPrice');
+    }
+    return this;
+  }
+
+  getAfterDate() {
+    if (this.queryString.dateFrom) {
+      const startDate = new Date(this.queryString.dateFrom);
+      this.query = this.query.find({
+        startDate: { $gte: startDate, $lte: new Date() },
+      });
+    }
     return this;
   }
 }

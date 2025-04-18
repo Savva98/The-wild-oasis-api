@@ -94,12 +94,6 @@ const protect = catchAsync(async (req, res, next) => {
     decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
-      // // Handle expired token
-      // await logoutByDeletingRefreshToken(token, res);
-      // res.cookie('jwt', 'loggedout', {
-      //   expires: new Date(Date.now() + 10 * 1000),
-      //   httpOnly: true,
-      // });
       return next(
         new AppError('Token expired. Please refresh your token.', 401),
       );
