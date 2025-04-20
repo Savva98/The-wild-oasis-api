@@ -13,12 +13,16 @@ const cookieParser = require('cookie-parser');
 const { router: cabinsRout, cabinRout } = require('./routes/cabinRoutes');
 const { router: guestsRout, gestRout } = require('./routes/guestRoutes');
 const { router: authRout, rout: authRoutPath } = require('./routes/authRoutes');
+const {
+  router: securityRout,
+  rout: securetyRout,
+} = require('./routes/sanctum');
 const AppError = require('./utils/appError');
 const errorHandler = require('./controllers/errorController');
 
 const app = express();
 const corsOptions = {
-  origin: 'http://localhost:5173',
+  origin: `${process.env.CLIENT_URL}`,
   credentials: true,
 };
 app.use(cors(corsOptions));
@@ -75,6 +79,7 @@ app.use(hpp());
 
 app.use(cabinRout, cabinsRout);
 app.use(gestRout, guestsRout);
+app.use(securetyRout, securityRout);
 app.use(authRoutPath, authRout);
 
 app.all('*', (req, res, next) => {

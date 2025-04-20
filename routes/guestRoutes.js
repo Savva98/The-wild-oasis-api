@@ -20,13 +20,13 @@ router.get('/me', getMe, getGuest);
 router.delete('/deleteMe', validateCSRFToken, getMe, deleteGuest);
 router.patch(
   '/updateMe',
-  validateCSRFToken,
-  checkUploadedData,
   uploadUserPhoto,
   resizeUserPhoto,
+  checkUploadedData,
+  validateCSRFToken,
   updateUserData,
 );
-router.use(restrictTo('admin'));
+router.use(restrictTo('admin'), validateCSRFToken);
 router.get('/', getAllGuests);
 router.route('/:id').get(getGuest).delete(deleteGuest);
 

@@ -32,6 +32,11 @@ const guestSchema = new mongoose.Schema({
     default: '',
     select: false,
   },
+  csrfTokenExpires: {
+    type: Date,
+    default: Date.now() + 10 * 60 * 1000,
+    select: false,
+  },
   password: {
     type: String,
     required: [true, 'Please provide a password!'],
@@ -108,7 +113,9 @@ guestSchema.methods.createPasswordResetToken = function () {
 guestSchema.methods.addCSRFToken = async function () {
   const csrfToken = crypto.randomBytes(32).toString('hex');
   const hash = crypto.createHash('sha256').update(csrfToken).digest('hex');
-  await this.updateOne({ $set: { csrfToken: hash } });
+  await this.updateOne({
+    $set: { csrfToken: hash, csrfTokenExpires: Date.now() + 120 * 60 * 1000 },
+  });
   return csrfToken;
 };
 
@@ -119,10 +126,7 @@ guestSchema.methods.correctCSRFToken = function (token) {
 guestSchema.methods.addSecret = async function (secret) {
   this.secret = secret;
   await this.updateOne({ $set: { secret } });
-<<<<<<< HEAD
   return secret;
-=======
->>>>>>> adding-functionality
 };
 
 guestSchema.methods.updateMfActive = async function () {

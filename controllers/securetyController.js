@@ -17,6 +17,22 @@ function createRefreshToken(id) {
     expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
   });
 }
+const generateCSRFToken = catchAsync(async (guest) => {
+  await guest.addCSRFToken();
+});
+const generateCSRFTokenAfterExpiration = catchAsync(async (req, res, next) => {
+  const guest = await Guest.findById(req.user._id).select(
+    '+csrfToken +csrfTokenExpires',
+  );
+  if (guest.csrfTokenExpires < Date.now()) {
+    await guest.addCSRFToken();
+  }
+  res.status(200).json({
+    status: 'success',
+    csrfToken: guest.csrfToken,
+  });
+  next();
+});
 async function storeRefreshToken(refreshToken, userId) {
   const expiresAt = new Date(
     Date.now() + 2 * process.env.JWT_REFRESH_EXPIRES_AT * 60 * 60 * 1000,
@@ -30,13 +46,14 @@ async function storeRefreshToken(refreshToken, userId) {
 async function createSendToken(user, statusCode, res) {
   const token = createToken(user._id);
   const refreshToken = createRefreshToken(user._id);
+  await generateCSRFToken(user);
   storeRefreshToken(refreshToken, user._id);
-  const csrfToken = await user.addCSRFToken();
   const cookieOptions = {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
     ),
     httpOnly: true,
+    sameSite: 'lax',
   };
   if (process.env.NODE_ENV === 'production') {
     cookieOptions.secure = true;
@@ -44,11 +61,11 @@ async function createSendToken(user, statusCode, res) {
   res.cookie('jwt', token, cookieOptions);
   user.password = undefined;
   user.csrfToken = undefined;
+  user.csrfTokenExpires = undefined;
   res.status(statusCode).json({
     status: 'success',
     token,
     refreshToken,
-    csrfToken,
     data: {
       user,
     },
@@ -68,17 +85,6 @@ async function logoutByDeletingRefreshToken(token, res) {
   });
   await RefreshToken.findOneAndDelete({ user: decoded.id });
 }
-const generateCSRFToken = catchAsync(async (req, res, next) => {
-  const guest = await Guest.findById(req.user._id).select('+csrfToken');
-  if (!guest) {
-    return next(new AppError('Guest not found', 404));
-  }
-  const csrfToken = guest.addCSRFToken();
-  res.status(200).json({
-    status: 'success',
-    csrfToken,
-  });
-});
 
 const validateCSRFToken = catchAsync(async (req, res, next) => {
   const token = req.headers['x-csrf-token'] ?? '';
@@ -86,7 +92,12 @@ const validateCSRFToken = catchAsync(async (req, res, next) => {
     return next(new AppError('CSRF token is missing', 403));
   }
 
-  const guest = await Guest.findById(req.user._id).select('+csrfToken');
+  const guest = await Guest.findById(req.user._id).select(
+    '+csrfToken +csrfTokenExpires',
+  );
+  if (guest.csrfTokenExpires < Date.now()) {
+    return next(new AppError('CSRF token expired', 403));
+  }
   if (!guest || !guest.correctCSRFToken(token)) {
     return next(new AppError('Invalid CSRF token', 403));
   }
@@ -141,6 +152,19 @@ const getRefreshToken = catchAsync(async (req, res, next) => {
   const user = await Guest.findById(decoded.id);
   createSendToken(user, 200, res);
 });
+const getUserCSRFToken = catchAsync(async (req, res, next) => {
+  const guest = await Guest.findById(req.user._id).select(
+    '+csrfToken +csrfTokenExpires',
+  );
+  if (guest.csrfTokenExpires < Date.now()) {
+    return next(new AppError('CSRF token expired', 403));
+  }
+  const { csrfToken } = guest;
+  res.status(200).json({
+    status: 'success',
+    csrfToken,
+  });
+});
 
 module.exports = {
   logoutByDeletingRefreshToken,
@@ -150,4 +174,6 @@ module.exports = {
   getRefreshToken,
   validateCSRFToken,
   generateCSRFToken,
+  getUserCSRFToken,
+  generateCSRFTokenAfterExpiration,
 };

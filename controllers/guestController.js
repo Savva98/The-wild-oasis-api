@@ -77,10 +77,9 @@ const updateUserData = catchAsync(async (req, res, next) => {
   const updatedUser = await Guest.findByIdAndUpdate(req.user.id, filteredBody, {
     new: true,
     runValidators: true,
-  }).select('+csrfToken');
+  }).select('+csrfToken +csrfTokenExpires');
   const csrfToken = await updatedUser.addCSRFToken();
   updatedUser.password = undefined;
-  updatedUser.csrfToken = undefined;
   res.status(200).json({
     status: 'success',
     csrfToken,

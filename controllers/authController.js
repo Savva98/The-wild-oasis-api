@@ -39,7 +39,9 @@ const login = catchAsync(async (req, res, next) => {
   if (!email || !password) {
     return next(new AppError('Please provide email and password', 400));
   }
-  const guest = await Guest.findOne({ email }).select('+password +csrfToken');
+  const guest = await Guest.findOne({ email }).select(
+    '+password +csrfToken +csrfTokenExpires',
+  );
   if (!guest || !(await guest.correctPassword(password, guest.password))) {
     return next(new AppError('Incorrect email or password', 401));
   }
