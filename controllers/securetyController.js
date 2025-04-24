@@ -18,7 +18,8 @@ function createRefreshToken(id) {
   });
 }
 const generateCSRFToken = catchAsync(async (guest) => {
-  await guest.addCSRFToken();
+  const csrfToken = await guest.addCSRFToken();
+  return csrfToken;
 });
 const generateCSRFTokenAfterExpiration = catchAsync(async (req, res, next) => {
   const guest = await Guest.findById(req.user._id).select(
@@ -46,7 +47,7 @@ async function storeRefreshToken(refreshToken, userId) {
 async function createSendToken(user, statusCode, res) {
   const token = createToken(user._id);
   const refreshToken = createRefreshToken(user._id);
-  await generateCSRFToken(user);
+  const csrfToken = await generateCSRFToken(user);
   storeRefreshToken(refreshToken, user._id);
   const cookieOptions = {
     expires: new Date(
@@ -60,12 +61,12 @@ async function createSendToken(user, statusCode, res) {
   }
   res.cookie('jwt', token, cookieOptions);
   user.password = undefined;
-  user.csrfToken = undefined;
   user.csrfTokenExpires = undefined;
   res.status(statusCode).json({
     status: 'success',
     token,
     refreshToken,
+    csrfToken,
     data: {
       user,
     },
@@ -148,6 +149,10 @@ const getRefreshToken = catchAsync(async (req, res, next) => {
   await BlackListToken.create({
     token: refreshToken,
     expiresAt: new Date(decoded.exp * 1000),
+  });
+  await RefreshToken.findOneAndDelete({
+    user: decoded.id,
+    token: refreshToken,
   });
   const user = await Guest.findById(decoded.id);
   createSendToken(user, 200, res);

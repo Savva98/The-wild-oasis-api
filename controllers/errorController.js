@@ -77,6 +77,12 @@ const errorFunc = (err, req, res, next) => {
     if (err.name === 'TokenExpiredError') {
       error = new AppError('Your token has expired! Please log in again!', 401);
     }
+    if (err.name === 'NotBeforeError') {
+      error = new AppError(
+        'Token is not yet active. Please wait a little.',
+        401,
+      );
+    }
     sendErrorProduction(error, req, res);
   }
   next();
