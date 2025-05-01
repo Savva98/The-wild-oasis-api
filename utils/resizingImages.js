@@ -1,9 +1,9 @@
 const sharp = require('sharp');
 const crypto = require('crypto');
 
-async function resizeImage(req, res, next) {
+async function resizeImages(req, res, next) {
   if (!req.files.image || !req.files.images) return next();
-  const imageId = await crypto.randomBytes(5).toString('hex');
+  const imageId = crypto.randomBytes(5).toString('hex');
   req.body.image = `cabin-${req.body.name}-${imageId}-${Date.now()}.jpeg`;
   req.body.images = [];
   await sharp(req.files.image[0].buffer)
@@ -24,4 +24,4 @@ async function resizeImage(req, res, next) {
   );
 }
 
-module.exports = { resizeImage };
+module.exports = { resizeImages };

@@ -11,7 +11,7 @@ const {
 } = require('./handleFactory');
 const AppError = require('../utils/appError');
 const { catchAsync } = require('../utils/catchAsync');
-const { resizeImage } = require('../utils/resizingImages');
+const { resizeImages } = require('../utils/resizingImages');
 const { resizeOne } = require('../utils/resizeOne');
 const { resizeAll } = require('../utils/resizeAll');
 
@@ -35,18 +35,20 @@ const uploadCabinImages = upload.fields([
 ]);
 
 const resizeCabinImages = catchAsync(async (req, res, next) => {
-  const cabinImagePath = path.join(
-    __dirname,
-    `../../Front-end/public/img/cabins`,
-  );
+  if (req.originalUrl === '/api/v1/cabins/addCabin' && !req.files.image) {
+    return next(new AppError('Please upload a cabin image', 400));
+  }
+  if (!req.files.image && !req.files.images) return next();
   // console.log(req.body);
   if (req.files.image && !req.files.images) {
-    resizeOne(req, res, next, cabinImagePath);
+    resizeOne(req, res, next);
+    return next();
   }
   if (req.files.images && !req.files.image) {
-    resizeAll(req, res, next, cabinImagePath);
+    resizeAll(req, res, next);
+    return next();
   }
-  resizeImage(req, res, next);
+  resizeImages(req, res, next);
   next();
 });
 
@@ -60,8 +62,16 @@ const top5CheapCabins = (req, res, next) => {
 const checkCabinName = catchAsync(async (req, res, next) => {
   if (!req.body.name)
     return next(new AppError('Please provide a cabin name', 400));
-  const cabins = await Cabin.findOne({ name: req.body.name });
-  if (cabins) {
+  const cabin = await Cabin.findOne({ name: req.body.name });
+  if (
+    cabin &&
+    cabin.name === req.body.name &&
+    req.originalUrl.includes(`${cabin._id}`)
+  ) {
+    req.cabin = cabin;
+    return next();
+  }
+  if (cabin) {
     return next(new AppError('Cabin name already exists', 400));
   }
   next();
@@ -75,8 +85,27 @@ const checkUploadedData = (req, res, next) => {
     'discount',
     'description',
     'image',
-    'images',
   ];
+  if (req.originalUrl.includes(`cabins/${req.params.id}`)) {
+    let inc = 0;
+    const { cabin } = req;
+    const bodyKeys = Object.keys(req.body);
+    bodyKeys.forEach((key) => {
+      if (
+        key === 'regularPrice' ||
+        key === 'discount' ||
+        key === 'maxCapacity'
+      ) {
+        req.body[key] = Number(req.body[key]);
+      }
+      if (req.body[key] !== cabin[key]) {
+        inc += 1;
+      }
+    });
+    if (inc === 0) {
+      return next(new AppError('No changes made', 400));
+    }
+  }
   const uploadedFields = Object.keys(req.body);
   const isAllowed = uploadedFields.every((field) =>
     allowedFields.includes(field),

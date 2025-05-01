@@ -21,7 +21,15 @@ router.route('/top-5-cheap').get(top5CheapCabins, getAllCabins);
 router
   .route('/:id')
   .get(getCabin)
-  .patch(protect, restrictTo('admin'), updateCabin)
+  .patch(
+    // protect,
+    uploadCabinImages,
+    resizeCabinImages,
+    checkCabinName,
+    checkUploadedData,
+    // restrictTo('admin'),
+    updateCabin,
+  )
   .delete(protect, restrictTo('admin'), deleteCabin);
 router
   .route('/addCabin')

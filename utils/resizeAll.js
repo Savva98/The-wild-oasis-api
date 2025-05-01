@@ -1,7 +1,13 @@
 const sharp = require('sharp');
+const crypto = require('crypto');
+const path = require('path');
 const { catchAsync } = require('./catchAsync');
 
-const resizeAll = catchAsync(async (req, res, next, cabinImagePath) => {
+const resizeAll = catchAsync(async (req, res, next) => {
+  const cabinImagePath = path.join(
+    __dirname,
+    `../../Front-end/public/img/cabins`,
+  );
   req.body.images = [];
   await Promise.all(
     req.files.images.map(async (file, i) => {
@@ -14,7 +20,6 @@ const resizeAll = catchAsync(async (req, res, next, cabinImagePath) => {
       req.body.images.push(filename);
     }),
   );
-  return next();
 });
 
 module.exports = { resizeAll };
