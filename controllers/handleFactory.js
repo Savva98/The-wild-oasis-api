@@ -33,9 +33,7 @@ const getOne = (Model, popOptions) =>
     }
     res.status(200).json({
       status: 'success',
-      data: {
-        [Model.collection.name]: document,
-      },
+      [Model.collection.name]: document,
     });
   });
 
@@ -62,9 +60,7 @@ const updateOne = (Model) =>
     }
     res.status(200).json({
       status: 'success',
-      data: {
-        [Model.collection.name]: document,
-      },
+      [Model.collection.name]: document,
     });
   });
 
@@ -73,9 +69,7 @@ const createOne = (Model) =>
     const document = await Model.create(req.body);
     res.status(201).json({
       status: 'success',
-      data: {
-        [Model.collection.name]: document,
-      },
+      [Model.collection.name]: document,
     });
   });
 

@@ -32,7 +32,6 @@ const generateCSRFTokenAfterExpiration = catchAsync(async (req, res, next) => {
     status: 'success',
     csrfToken: guest.csrfToken,
   });
-  next();
 });
 async function storeRefreshToken(refreshToken, userId) {
   const expiresAt = new Date(

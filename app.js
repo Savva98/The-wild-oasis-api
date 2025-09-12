@@ -17,6 +17,7 @@ const {
   router: securityRout,
   rout: securetyRout,
 } = require('./routes/sanctum');
+const { router: settingRout, rout } = require('./routes/settingRoutes');
 const AppError = require('./utils/appError');
 const errorHandler = require('./controllers/errorController');
 
@@ -81,6 +82,7 @@ app.use(cabinRout, cabinsRout);
 app.use(gestRout, guestsRout);
 app.use(securetyRout, securityRout);
 app.use(authRoutPath, authRout);
+app.use(rout, settingRout);
 
 app.all('*', (req, res, next) => {
   const err = new AppError(
