@@ -23,11 +23,11 @@ router
   .get(getCabin)
   .patch(
     // protect,
+    // restrictTo('admin'),
     uploadCabinImages,
     resizeCabinImages,
     checkCabinName,
     checkUploadedData,
-    // restrictTo('admin'),
     updateCabin,
   )
   .delete(protect, restrictTo('admin'), deleteCabin);

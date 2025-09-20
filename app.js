@@ -11,6 +11,7 @@ const { filterXSS } = require('xss');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
 const { router: cabinsRout, cabinRout } = require('./routes/cabinRoutes');
+const { router: bookingsRout, bookingRout } = require('./routes/bookingsRout');
 const { router: guestsRout, gestRout } = require('./routes/guestRoutes');
 const { router: authRout, rout: authRoutPath } = require('./routes/authRoutes');
 const {
@@ -79,6 +80,7 @@ app.use((req, res, next) => {
 app.use(hpp());
 
 app.use(cabinRout, cabinsRout);
+app.use(bookingRout, bookingsRout);
 app.use(gestRout, guestsRout);
 app.use(securetyRout, securityRout);
 app.use(authRoutPath, authRout);

@@ -14,6 +14,10 @@ const bookingSchema = new mongoose.Schema(
       type: Date,
       required: [true, 'Please provide the end date!'],
     },
+    numberOfNights: {
+      type: Number,
+      required: [true, 'Please provide the number of nights!'],
+    },
     guestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Guest',
@@ -35,9 +39,25 @@ const bookingSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    totalPrice: {
+      type: Number,
+      required: [true, 'Please provide the total price!'],
+      min: [0, 'Total price cannot be negative!'],
+    },
     numGuests: {
       type: Number,
       required: [true, 'Please provide the number of guests!'],
+    },
+    status: {
+      type: String,
+      enum: [
+        'unconfirmed',
+        'confirmed',
+        'checked-in',
+        'checked-out',
+        'canceled',
+      ],
+      default: 'unconfirmed',
     },
   },
   {
@@ -52,7 +72,7 @@ bookingSchema.pre(/^find/, function (next) {
     select: 'fullName email nationality countryFlag',
   }).populate({
     path: 'cabinId',
-    select: 'name',
+    select: 'name regularPrice discount',
   });
   next();
 });
@@ -60,6 +80,17 @@ bookingSchema.pre(/^find/, function (next) {
 bookingSchema.pre('save', function (next) {
   this.startDate = new Date(this.startDate);
   this.endDate = new Date(this.endDate);
+  this.numberOfNights = Math.round(
+    (this.endDate - this.startDate) / (1000 * 60 * 60 * 24),
+  );
+  this.totalPrice = this.numberOfNights * this.cabinId.regularPrice;
+  if (this.hasBreakfast) {
+    this.totalPrice += this.numberOfNights * 20 * this.numGuests;
+  }
+  if (this.cabinId.discount > 0) {
+    this.totalPrice -= this.cabinId.discount;
+  }
+
   next();
 });
 

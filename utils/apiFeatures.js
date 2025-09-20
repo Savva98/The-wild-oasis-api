@@ -5,29 +5,43 @@ class ApiFeatures {
     this.regex = /\b(gte|gt|lte|lt)\b/g;
   }
 
+  filterByDiscount(str, query) {
+    if (str === 'all') {
+      delete query.discount;
+      return this;
+    }
+    if (str === 'with-discount') {
+      query.discount = { $gt: 0 };
+      return this;
+    }
+    if (str === 'no-discount') {
+      query.discount = 0;
+      return this;
+    }
+  }
+
   filter() {
     const queryObj = { ...this.queryString };
-    const excludeFields = ['page', 'sort', 'limit', 'fields'];
+    const excludeFields = [
+      'page',
+      'sort',
+      'limit',
+      'fields',
+      'date',
+      'dateFrom',
+    ];
     excludeFields.forEach((el) => delete queryObj[el]);
     let queryStr = JSON.stringify(queryObj);
+    if (queryStr === '{}') {
+      return this;
+    }
     queryStr = queryStr.replace(this.regex, (match) => `$${match}`);
     const parsedQuery = JSON.parse(queryStr);
     const transformedQuery = { ...parsedQuery };
-    // const queryEntries = Object.entries(parsedQuery);
-    // for (let i = 0; i < queryEntries.length; i += 1) {
-    //   if (this.regex.test(queryEntries[i][0])) {
-    //     const split = queryEntries[i][0].split('{');
-    //     const replace = split[0].replace('}', '');
-    //     if (!transformedQuery[split[0]]) {
-    //       transformedQuery[split[0]] = {};
-    //     }
-    //     transformedQuery[split[0]][replace] = Number(queryEntries[i][1]);
-    //     // eslint-disable-next-line no-continue
-    //     continue;
-    //   }
-    //   transformedQuery[queryEntries[i][0]] = queryEntries[i][1];
-    // }
-    // console.log(transformedQuery);
+    if (typeof transformedQuery.discount === 'string') {
+      this.filterByDiscount(transformedQuery.discount, transformedQuery);
+    }
+
     this.query = this.query.find(transformedQuery);
     return this;
   }
@@ -66,18 +80,19 @@ class ApiFeatures {
 
       this.query = this.query
         .find({
-          createdAt: { $gte: startDate, $lte: new Date() },
+          created_at: { $gte: startDate, $lte: new Date() },
         })
-        .select('createdAt totalPrice extrasPrice');
+        .select('createdAt totalPrice');
     }
     return this;
   }
 
   getAfterDate() {
     if (this.queryString.dateFrom) {
-      const startDate = new Date(this.queryString.dateFrom);
+      const dateFrom = new Date(this.queryString.dateFrom);
       this.query = this.query.find({
-        startDate: { $gte: startDate, $lte: new Date() },
+        startDate: { $gte: dateFrom, $lte: new Date() },
+        status: { $nin: ['canceled', 'unconfirmed'] },
       });
     }
     return this;

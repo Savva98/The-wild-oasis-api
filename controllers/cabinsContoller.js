@@ -55,7 +55,6 @@ const resizeCabinImages = catchAsync(async (req, res, next) => {
 const top5CheapCabins = (req, res, next) => {
   req.query.limit = '5';
   req.query.sort = 'regularPrice';
-  req.query.fields = 'name,regularPrice,description';
   next();
 };
 
