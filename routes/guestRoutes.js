@@ -15,18 +15,17 @@ const { validateCSRFToken } = require('../controllers/securetyController');
 const gestRout = '/api/v1/guests';
 
 const router = express.Router();
-router.use(protect);
+router.use(protect, validateCSRFToken);
 router.get('/me', getMe, getGuest);
-router.delete('/deleteMe', validateCSRFToken, getMe, deleteGuest);
+router.delete('/deleteMe', getMe, deleteGuest);
 router.patch(
   '/updateMe',
   uploadUserPhoto,
   resizeUserPhoto,
   checkUploadedData,
-  validateCSRFToken,
   updateUserData,
 );
-router.use(restrictTo('admin'), validateCSRFToken);
+router.use(restrictTo('admin'));
 router.get('/', getAllGuests);
 router.route('/:id').get(getGuest).delete(deleteGuest);
 

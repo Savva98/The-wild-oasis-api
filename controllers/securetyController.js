@@ -46,7 +46,7 @@ async function storeRefreshToken(refreshToken, userId) {
 async function createSendToken(user, statusCode, res) {
   const token = createToken(user._id);
   const refreshToken = createRefreshToken(user._id);
-  const csrfToken = await generateCSRFToken(user);
+  const csrfToken = generateCSRFToken(user);
   storeRefreshToken(refreshToken, user._id);
   const cookieOptions = {
     expires: new Date(
@@ -156,19 +156,6 @@ const getRefreshToken = catchAsync(async (req, res, next) => {
   const user = await Guest.findById(decoded.id);
   createSendToken(user, 200, res);
 });
-const getUserCSRFToken = catchAsync(async (req, res, next) => {
-  const guest = await Guest.findById(req.user._id).select(
-    '+csrfToken +csrfTokenExpires',
-  );
-  if (guest.csrfTokenExpires < Date.now()) {
-    return next(new AppError('CSRF token expired', 403));
-  }
-  const { csrfToken } = guest;
-  res.status(200).json({
-    status: 'success',
-    csrfToken,
-  });
-});
 
 module.exports = {
   logoutByDeletingRefreshToken,
@@ -178,6 +165,5 @@ module.exports = {
   getRefreshToken,
   validateCSRFToken,
   generateCSRFToken,
-  getUserCSRFToken,
   generateCSRFTokenAfterExpiration,
 };

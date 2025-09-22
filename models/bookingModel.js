@@ -83,12 +83,13 @@ bookingSchema.pre('save', function (next) {
   this.numberOfNights = Math.round(
     (this.endDate - this.startDate) / (1000 * 60 * 60 * 24),
   );
-  this.totalPrice = this.numberOfNights * this.cabinId.regularPrice;
-  if (this.hasBreakfast) {
-    this.totalPrice += this.numberOfNights * 20 * this.numGuests;
-  }
+  this.totalPrice = this.cabinId.regularPrice;
   if (this.cabinId.discount > 0) {
     this.totalPrice -= this.cabinId.discount;
+  }
+  this.totalPrice *= this.numberOfNights;
+  if (this.hasBreakfast) {
+    this.totalPrice += this.numberOfNights * 20 * this.numGuests;
   }
 
   next();

@@ -144,7 +144,7 @@ const forgotPassword = catchAsync(async (req, res, next) => {
   try {
     const resetURL = `${req.protocol}://${req.get(
       'host',
-    )}/api/v1/auth/resetPassword/${resetToken}`;
+    )}/api/v1/sanctum/resetPassword/${resetToken}`;
     await new Email(guest, resetURL).sendPasswordReset();
     res.status(200).json({
       status: 'success',
@@ -194,7 +194,7 @@ const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
   async (req, res, next) => {
     const { path } = req;
     const guest = await Guest.findById(req.user._id).select('+secret');
-    if (guest.isMfActive && path !== '/api/v1/auth/2fa/updatePassword') {
+    if (guest.isMfActive && path !== '/api/v1/sanctum/2fa/updatePassword') {
       return next(
         new AppError('Two factor authentication is already enabled', 400),
       );
@@ -207,9 +207,9 @@ const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
       secret: guest.secret,
       encoding: 'base32',
     });
-    let url = `${req.protocol}://${req.get('host')}/api/v1/auth/2fa/${code}`;
-    if (path === '/api/v1/auth/2fa/updatePassword') {
-      url = `${req.protocol}://${req.get('host')}/api/v1/auth/updatePassword/${code}
+    let url = `${req.protocol}://${req.get('host')}/api/v1/sanctum/2fa/${code}`;
+    if (path === '/api/v1/sanctum/2fa/updatePassword') {
+      url = `${req.protocol}://${req.get('host')}/api/v1/sanctum/updatePassword/${code}
       `;
     }
     await new Email(guest, url, code).sendTwoFactor();
