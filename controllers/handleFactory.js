@@ -4,14 +4,14 @@ const { catchAsync } = require('../utils/catchAsync');
 
 const getAll = (Model) =>
   catchAsync(async (req, res, next) => {
-    // let filter = {};
-    // if(Model.collection.name === '')
-
     const feature = new ApiFeatures(Model.find(), req.query);
+    let count = await Model.countDocuments();
     if (req.baseUrl.includes('bookings')) {
+      if (req.query.status && req.query.status !== 'all')
+        count = await Model.countDocuments({ status: req.query.status });
       feature.getBydate().getAfterDate();
     }
-    feature.filter().sort().limitFields().paginate();
+    feature.sort().limitFields().paginate().filter();
     const doc = await feature.query;
     if (!doc) {
       return next(new AppError('No document found', 404));
@@ -19,6 +19,7 @@ const getAll = (Model) =>
     res.status(200).json({
       status: 'success',
       results: doc.length,
+      totalDocuments: count,
       [Model.collection.name]: doc,
     });
   });

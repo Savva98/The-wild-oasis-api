@@ -6,10 +6,6 @@ class ApiFeatures {
   }
 
   filterByDiscount(str, query) {
-    if (str === 'all') {
-      delete query.discount;
-      return this;
-    }
     if (str === 'with-discount') {
       query.discount = { $gt: 0 };
       return this;
@@ -21,6 +17,12 @@ class ApiFeatures {
   }
 
   filter() {
+    const values = Object.values(this.queryString);
+    if (values.includes('all')) {
+      const keys = Object.keys(this.queryString);
+      const index = values.indexOf('all');
+      delete this.queryString[keys[index]];
+    }
     const queryObj = { ...this.queryString };
     const excludeFields = [
       'page',
@@ -31,13 +33,25 @@ class ApiFeatures {
       'dateFrom',
     ];
     excludeFields.forEach((el) => delete queryObj[el]);
-    let queryStr = JSON.stringify(queryObj);
+    const emptyObject = {};
+    Object.keys(queryObj).forEach((key) => {
+      if (this.regex.test(key)) {
+        const value = queryObj[key];
+        const operator = key
+          .split('[')[1]
+          .replace(']', '')
+          .replace(this.regex, (match) => `$${match}`);
+        const fieldName = key.replace(/\[.*\]$/, '');
+        emptyObject[fieldName] = { [operator]: value };
+      } else emptyObject[key] = queryObj[key];
+    });
+    let queryStr = JSON.stringify(emptyObject);
     if (queryStr === '{}') {
       return this;
     }
-    queryStr = queryStr.replace(this.regex, (match) => `$${match}`);
     const parsedQuery = JSON.parse(queryStr);
     const transformedQuery = { ...parsedQuery };
+
     if (typeof transformedQuery.discount === 'string') {
       this.filterByDiscount(transformedQuery.discount, transformedQuery);
     }

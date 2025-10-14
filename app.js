@@ -1,5 +1,6 @@
 // const path = require('path');
 const process = require('process');
+// const dotenv = require('dotenv');
 const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
@@ -22,11 +23,19 @@ const { router: settingRout, rout } = require('./routes/settingRoutes');
 const AppError = require('./utils/appError');
 const errorHandler = require('./controllers/errorController');
 
+// dotenv.config({ path: './config.env', override: true });
+
 const app = express();
 const corsOptions = {
   origin: `${process.env.CLIENT_URL}`,
   credentials: true,
 };
+app.use('api/v1/cart', (req, res, next) => {
+  console.log(req.originalUrl);
+  console.log(req.query);
+  console.log('cart');
+  next();
+});
 app.use(cors(corsOptions));
 
 app.use(
@@ -53,47 +62,69 @@ const limiter = rateLimit({
   message: 'To many requests from this IP, please try again in an hour!',
 });
 app.use('/api', limiter);
+
 app.use(express.json({ limit: '10kb' }));
+
 app.use(express.urlencoded({ extended: true }));
+
 app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection
-app.use(monogoSenitize());
+// app.use(
+//   monogoSenitize({
+//     replaceWith: '_',
+//     onSanitize: function ({ req, key }) {
+//       console.log(`Sanitized key: ${key}`);
+//     },
+//   }),
+// );
+
 app.use((req, res, next) => {
   const sanitize = (obj) => {
+    const sanitazed = {};
     Object.keys(obj).forEach((key) => {
       if (typeof obj[key] === 'string') {
-        obj[key] = filterXSS(obj[key], {
+        sanitazed[key] = filterXSS(obj[key], {
           stripIgnoreTag: true,
           stripIgnoreTagBody: ['script'],
         });
       } else if (typeof key === 'object' && key !== null) {
-        sanitize(obj[key]);
+        sanitazed[key] = sanitize(obj[key]);
+      } else {
+        sanitazed[key] = obj[key];
       }
     });
+    return sanitazed;
   };
-  sanitize(req.body);
-  sanitize(req.params);
-  sanitize(req.query);
+  if (req.body) req.body = sanitize(req.body);
+  // if (req.query && Object.keys(req.query).length > 0)
+  //   req.query = sanitize(req.query);
+  if (req.params) req.params = sanitize(req.params);
+
   next();
 });
+
 app.use(hpp());
 
 app.use(cabinRout, cabinsRout);
+
 app.use(bookingRout, bookingsRout);
+
 app.use(gestRout, guestsRout);
+
 app.use(securetyRout, securityRout);
+
 app.use(authRoutPath, authRout);
+
 app.use(rout, settingRout);
 
-app.all('*', (req, res, next) => {
+app.all('/*path', (req, res, next) => {
   const err = new AppError(
     `Can't find ${req.originalUrl} on this server!`,
     404,
   );
   next(err);
 });
-app.options('*', cors(corsOptions));
 
 app.use(errorHandler);
 
