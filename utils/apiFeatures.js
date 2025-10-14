@@ -1,3 +1,4 @@
+const { sanitizeQuery } = require('./sanitizeQuery');
 class ApiFeatures {
   constructor(query, queryString) {
     this.query = query;
@@ -51,12 +52,12 @@ class ApiFeatures {
     }
     const parsedQuery = JSON.parse(queryStr);
     const transformedQuery = { ...parsedQuery };
-
     if (typeof transformedQuery.discount === 'string') {
       this.filterByDiscount(transformedQuery.discount, transformedQuery);
     }
+    const sanitize = sanitizeQuery(transformedQuery);
 
-    this.query = this.query.find(transformedQuery);
+    this.query = this.query.find(sanitize);
     return this;
   }
 

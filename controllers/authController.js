@@ -43,6 +43,7 @@ const login = catchAsync(async (req, res, next) => {
     '+password +csrfToken +csrfTokenExpires',
   );
   if (!guest || !(await guest.correctPassword(password, guest.password))) {
+    console.log(`Failed login attempt for email: ${email} from IP: ${req.ip}`);
     return next(new AppError('Incorrect email or password', 401));
   }
   createSendToken(guest, 200, res);
@@ -126,6 +127,7 @@ const protect = catchAsync(async (req, res, next) => {
 const restrictTo =
   (...roles) =>
   (req, res, next) => {
+    console.log(req.user);
     if (!roles.includes(req.user.role)) {
       return next(
         new AppError('You do not have permission to perform this action', 403),

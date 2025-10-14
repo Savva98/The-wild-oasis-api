@@ -58,10 +58,12 @@ if (process.env.NODE_ENV === 'development') {
 
 const limiter = rateLimit({
   max: 100,
-  windowMs: 60 * 60 * 1000,
-  message: 'To many requests from this IP, please try again in an hour!',
+  windowMs: 15 * 60 * 1000,
+  message: 'To many requests from this IP, please try again leter!',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use('/api', limiter);
+app.use('/api/v1', limiter);
 
 app.use(express.json({ limit: '10kb' }));
 
