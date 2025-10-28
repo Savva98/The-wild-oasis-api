@@ -1,10 +1,12 @@
 const jwt = require('jsonwebtoken');
 const { promisify } = require('util');
+const speakeasy = require('speakeasy');
 const BlackListToken = require('../models/blackListTokenModel');
 const RefreshToken = require('../models/refreshTokenModel');
 const AppError = require('../utils/appError');
 const Guest = require('../models/guestModel');
 const { catchAsync } = require('../utils/catchAsync');
+const TempLoginSession = require('../models/tempLoginSessionSchema');
 
 function createToken(id) {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -43,7 +45,7 @@ async function storeRefreshToken(refreshToken, userId) {
     expiresAt: expiresAt,
   });
 }
-async function createSendToken(user, statusCode, res) {
+async function createSendToken(user, statusCode, res, req) {
   const token = createToken(user._id);
   const refreshToken = createRefreshToken(user._id);
   const csrfToken = generateCSRFToken(user);
@@ -61,6 +63,7 @@ async function createSendToken(user, statusCode, res) {
   res.cookie('jwt', token, cookieOptions);
   user.password = undefined;
   user.csrfTokenExpires = undefined;
+  if (req.authenticatedUser) req.authenticatedUser = undefined;
   res.status(statusCode).json({
     status: 'success',
     token,
@@ -157,6 +160,52 @@ const getRefreshToken = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
+const loginWithMFA = async (guest, res) => {
+  const tempSessionId = crypto.randomBytes(32).toString('hex');
+  await TempLoginSession.create({
+    sessionId: tempSessionId,
+    userId: guest._id,
+    expireAt: new Date(Date.now() + 10 * 60 * 1000),
+    verified: false,
+    email: guest.email,
+  });
+  return res.status(200).json({
+    status: 'success',
+    requiresTotp: true,
+    sessionId: tempSessionId,
+    message: 'Please provide the code from your authenicator app.',
+    expiresIn: '10 minutes',
+  });
+};
+
+const verifyMFADuringLogin = async (sessionId, totpToken, next) => {
+  if (!sessionId || !totpToken) {
+    return next(new AppError('Session ID and TOTP token are required', 400));
+  }
+  const session = await TempLoginSession.findOne({
+    sessionId,
+  });
+
+  if (session.expireAt < Date.now()) {
+    await TempLoginSession.deleteOne({ sessionId });
+    return next(new AppError('Session has expired. Please login again.', 401));
+  }
+  if (!session) {
+    return next(new AppError('Invalid session. Please login again.', 401));
+  }
+  const guest = await Guest.findById(session.userId).select('+totpSecret');
+  const totpValid = speakeasy.totp.verify({
+    secret: guest.totpSecret,
+    encoding: 'base32',
+    token: totpToken,
+    window: 2,
+  });
+  if (!totpValid) {
+    return next(new AppError('Invalid two factor authentication code', 401));
+  }
+  await TempLoginSession.deleteOne({ sessionId });
+};
+
 module.exports = {
   logoutByDeletingRefreshToken,
   createToken,
@@ -166,4 +215,6 @@ module.exports = {
   validateCSRFToken,
   generateCSRFToken,
   generateCSRFTokenAfterExpiration,
+  loginWithMFA,
+  verifyMFADuringLogin,
 };

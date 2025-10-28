@@ -1,4 +1,3 @@
-// const path = require('path');
 const process = require('process');
 // const dotenv = require('dotenv');
 const express = require('express');
@@ -30,12 +29,6 @@ const corsOptions = {
   origin: `${process.env.CLIENT_URL}`,
   credentials: true,
 };
-app.use('api/v1/cart', (req, res, next) => {
-  console.log(req.originalUrl);
-  console.log(req.query);
-  console.log('cart');
-  next();
-});
 app.use(cors(corsOptions));
 
 app.use(
@@ -70,16 +63,6 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
-
-// Data sanitization against NoSQL query injection
-// app.use(
-//   monogoSenitize({
-//     replaceWith: '_',
-//     onSanitize: function ({ req, key }) {
-//       console.log(`Sanitized key: ${key}`);
-//     },
-//   }),
-// );
 
 app.use((req, res, next) => {
   const sanitize = (obj) => {

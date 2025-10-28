@@ -43,8 +43,9 @@ const guestSchema = new mongoose.Schema({
     select: false,
     minlength: 8,
   },
-  secret: {
+  totpSecret: {
     type: String,
+    required: true,
     select: false,
   },
   role: {
@@ -87,7 +88,8 @@ guestSchema.methods.correctPassword = async function (
   candidatePassword,
   userPassword,
 ) {
-  return await bcrypt.compare(candidatePassword, userPassword);
+  const match = await bcrypt.compare(candidatePassword, userPassword);
+  return match;
 };
 guestSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   if (this.passwordChangedAt) {
@@ -124,8 +126,8 @@ guestSchema.methods.correctCSRFToken = function (token) {
   return this.csrfToken === hash;
 };
 guestSchema.methods.addSecret = async function (secret) {
-  this.secret = secret;
-  await this.updateOne({ $set: { secret } });
+  this.totpSecret = secret;
+  await this.updateOne({ $set: { totpSecret } });
   return secret;
 };
 

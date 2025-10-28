@@ -14,6 +14,19 @@ const sendErrorDev = (err, req, res) => {
     msg: err.message,
   });
 };
+const sendTestDev = (err, req, res) => {
+  if (req.originalUrl.startsWith('/api')) {
+    return res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+      error: err,
+    });
+  }
+  return res.status(err.statusCode).render('error', {
+    title: 'Something went wrong!',
+    msg: err.message,
+  });
+};
 
 const sendErrorProduction = (err, req, res) => {
   if (req.originalUrl.startsWith('/api')) {
@@ -57,7 +70,6 @@ const handleValidationErrorDB = (err) => {
 };
 
 const errorFunc = (err, req, res, next) => {
-  console.log(err);
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
   if (process.env.NODE_ENV === 'development') {
@@ -85,6 +97,8 @@ const errorFunc = (err, req, res, next) => {
       );
     }
     sendErrorProduction(error, req, res);
+  } else if (process.env.NODE_ENV === 'test') {
+    sendTestDev(err, req, res);
   }
   next();
 };

@@ -10,12 +10,14 @@ const {
   activateTwoFactory,
   updatePassword,
   resetPassword,
+  // twoFctortest,
 } = require('../controllers/authController');
 
 const rout = '/api/v1/sanctum';
 const router = expres.Router();
 router.post('/refreshToken', getRefreshToken);
-router.post('/resetPassword/:token', resetPassword);
+// router.post('/2fa/test', twoFctortest);
+router.patch('/resetPassword/:token', resetPassword);
 router.use(protect);
 router.post('/getnewCsrfToken', generateCSRFTokenAfterExpiration);
 router.get('/sendTwoFactorAuth', sendTwoFactorCodeToCurrentlyLoginuser);
