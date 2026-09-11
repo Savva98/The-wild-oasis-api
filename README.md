@@ -147,5 +147,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 For support, please open an issue on the [GitHub repository](https://github.com/Savva98/The-wild-oasis-api/issues).
 
 ---
-
-Made with ❤️ for Wild Oasis
