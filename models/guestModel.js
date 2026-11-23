@@ -63,13 +63,68 @@ const guestSchema = new mongoose.Schema({
       message: 'Passwords are not the same!',
     },
   },
-  passwordChangedAt: Date,
+  totpExpires: {
+    type: Date,
+    default: Date.now() + 10 * 60 * 1000,
+    select: false,
+  },
+  passwordChangedAt: { type: Date, select: false },
   passwordResetToken: String,
   passwordResetExpires: Date,
+  authenticated: {
+    type: Boolean,
+    default: false,
+    select: false,
+  },
   isMfActive: {
     type: Boolean,
     default: false,
   },
+  devices: [
+    {
+      deviceId: {
+        type: String,
+        required: true,
+      },
+      deviceName: {
+        type: String,
+        default: 'Unknown Device',
+      },
+      type: {
+        type: String,
+        enum: ['mobile', 'tablet', 'desktop'],
+        required: true,
+      },
+      os: {
+        type: String,
+        required: true,
+      },
+      osVersion: String,
+      browser: {
+        type: String,
+        required: true,
+      },
+      browserVersion: String,
+      userAgent: String,
+      ipAddress: String,
+      lastLogin: {
+        type: Date,
+        default: Date.now,
+      },
+      loginCount: {
+        type: Number,
+        default: 1,
+      },
+      isActive: {
+        type: Boolean,
+        default: true,
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
 });
 
 guestSchema.pre('save', async function (next) {
@@ -127,12 +182,72 @@ guestSchema.methods.correctCSRFToken = function (token) {
 };
 guestSchema.methods.addSecret = async function (secret) {
   this.totpSecret = secret;
-  await this.updateOne({ $set: { totpSecret } });
+  if (!this.isMfActive) {
+    this.totpExpires = Date.now() + 10 * 60 * 1000;
+    await this.updateOne({
+      $set: { totpExpires: this.totpExpires },
+      $set: { totpSecret },
+    });
+    return secret;
+  }
+  await this.updateOne({
+    $set: { totpSecret },
+  });
   return secret;
+};
+guestSchema.methods.updateIsAuthenticated = async function (isAuthenticated) {
+  await this.updateOne({ $set: { isAuthenticated } });
 };
 
 guestSchema.methods.updateMfActive = async function () {
   await this.updateOne({ $set: { isMfActive: true } });
+};
+guestSchema.methods.addDevice = async function (deviceInfo) {
+  // Check if device already exists by deviceId
+  if (!this.devices) {
+    this.devices = [];
+  }
+  const existingDeviceIndex = this.devices.findIndex(
+    (d) => d.deviceId === deviceInfo.deviceId,
+  );
+
+  if (existingDeviceIndex !== -1) {
+    // Update existing device
+    this.devices[existingDeviceIndex].lastLogin = Date.now();
+    this.devices[existingDeviceIndex].loginCount += 1;
+    this.devices[existingDeviceIndex].ipAddress = deviceInfo.ipAddress;
+  } else {
+    // Add new device
+    this.devices.push(deviceInfo);
+    await this.updateOne({
+      $set: { devices: this.devices },
+    });
+  }
+
+  return this.devices;
+};
+
+guestSchema.methods.removeDevice = async function (deviceId) {
+  this.devices = this.devices.filter((d) => d.deviceId !== deviceId);
+  await this.save();
+  return this.devices;
+};
+
+guestSchema.methods.deactivateDevice = async function (deviceId) {
+  const device = this.devices.find((d) => d.deviceId === deviceId);
+  if (device) {
+    device.isActive = false;
+  }
+  await this.save();
+  return device;
+};
+
+guestSchema.methods.getActiveDevices = function () {
+  return this.devices.filter((d) => d.isActive);
+};
+
+guestSchema.methods.getDeviceByFingerprint = function (deviceId) {
+  return this.devices.find((d) => d.deviceId === deviceId);
 };
 
 const Guest = mongoose.model('Guest', guestSchema);

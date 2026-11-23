@@ -1,9 +1,9 @@
 const expres = require('express');
+const { getRefreshToken } = require('../controllers/securetyController');
 const {
-  getRefreshToken,
   validateCSRFToken,
   generateCSRFTokenAfterExpiration,
-} = require('../controllers/securetyController');
+} = require('../controllers/csrfTokenController');
 const {
   protect,
   sendTwoFactorCodeToCurrentlyLoginuser,

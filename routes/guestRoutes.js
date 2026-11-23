@@ -10,7 +10,7 @@ const {
   checkUploadedData,
 } = require('../controllers/guestController');
 const { protect, restrictTo } = require('../controllers/authController');
-const { validateCSRFToken } = require('../controllers/securetyController');
+const { validateCSRFToken } = require('../controllers/csrfTokenController');
 
 const gestRout = '/api/v1/guests';
 

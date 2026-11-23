@@ -5,9 +5,19 @@ const {
   login,
   logout,
   forgotPassword,
+} = require('../controllers/authController');
+const {
   loginWithActivatedMFA,
   protectLoginMFA,
-} = require('../controllers/authController');
+  nextStepAfterLoginWithMFA,
+} = require('../controllers/mfaController');
+const {
+  detectDevice,
+  logoutDevice,
+} = require('../controllers/deviceController');
+const {
+  rehydrateLoginSession,
+} = require('../controllers/rehydrationController');
 
 const rout = '/api/v1/auth';
 const router = express.Router();
@@ -27,10 +37,27 @@ const forgetPasswordLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-router.post('/signup', signUp);
-router.post('/login', loginLimiter, login);
-router.post('/logout', logout);
+const rehydrateLimiter = rateLimit({
+  max: 5,
+  windowMs: 15 * 60 * 1000,
+  message:
+    'Too many session rehydration attempts from this IP, please try again later!',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post('/signup', detectDevice, signUp);
+router.post(
+  '/login',
+  loginLimiter,
+  detectDevice,
+  login,
+  nextStepAfterLoginWithMFA,
+);
+router.post('/logout', logoutDevice, logout);
 router.post('/forgotPassword', forgetPasswordLimiter, forgotPassword);
+
+router.post('/session', rehydrateLimiter, rehydrateLoginSession);
 router.use(protectLoginMFA);
 router.post('/login-mfa', loginLimiter, loginWithActivatedMFA);
 

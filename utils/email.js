@@ -11,22 +11,22 @@ class Email extends Transporter {
     this.code = code;
   }
 
-  async send(subject) {
+  async send(subject, mailOptions) {
     // 1) Create a transporter
     const transporter = this.newTransport();
     // 2) Define the email options
-    const mailOptions = {
-      from: this.from,
-      to: this.to,
-      subject,
-      text: this.url,
-    };
-    if (subject.includes('Two factory authonication!')) {
-      mailOptions.text = `Your two factory code is ${this.code}`;
+    if (!mailOptions) {
+      mailOptions = {
+        from: this.from,
+        to: this.to,
+        subject,
+        text: this.url,
+      };
+      await transporter.sendMail(mailOptions);
+      return;
     }
-
-    // 3) Actually send the email
     await transporter.sendMail(mailOptions);
+    // 3) Actually send the email
   }
 
   async sendWelcome() {
@@ -37,14 +37,32 @@ class Email extends Transporter {
     await this.send('Your password reset token (valid for only 10 minutes)');
   }
 
+  async sendPasswordUpdateVarificationCodeWirhNoMFA() {
+    const subject = 'Password Update Verification Code';
+    const mailOptions = {
+      from: this.from,
+      to: this.to,
+      subject,
+      html: `
+        <h2>Wild Oasis Password Update Verification</h2>
+        <p>Hallo ${this.firstName},</p>
+        <p>We received a request to update your password. To proceed with the update, please use the verification code below:</p>
+        <h3>Your Verification Code: ${this.code}</h3>
+        <p>Or you could use following link if you don't want manualy enter the code</p>
+        <a href="${this.url}">Click to Update Password</a>
+        <p>This code is valid for the next 10 minutes. If you did not request a password update, please ignore this email.</p>
+        <p>If you did not request this change, please contact our support immediately.</p>
+      `,
+    };
+    await this.send(subject, mailOptions);
+  }
+
   async sendTwoFactor() {
     await this.send('Two factory authonication!');
   }
   async sendTwoFactorQrCode(qrCodeDataUrl, manualKey) {
     const subject = 'Login Verification - Scan QR Code';
-    const transporter = this.newTransport();
     const qeCodeBuffer = qrCodeDataUrl;
-    console.log(qeCodeBuffer);
     const mailOptions = {
       from: this.from,
       to: this.to,
@@ -72,7 +90,7 @@ class Email extends Transporter {
         },
       ],
     };
-    await transporter.sendMail(mailOptions);
+    await this.send(subject, mailOptions);
   }
 }
 module.exports = Email;

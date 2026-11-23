@@ -1,5 +1,4 @@
 const process = require('process');
-// const dotenv = require('dotenv');
 const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
@@ -10,6 +9,7 @@ const monogoSenitize = require('express-mongo-sanitize');
 const { filterXSS } = require('xss');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
+const logger = require('./utils/logEvents');
 const { router: cabinsRout, cabinRout } = require('./routes/cabinRoutes');
 const { router: bookingsRout, bookingRout } = require('./routes/bookingsRout');
 const { router: guestsRout, gestRout } = require('./routes/guestRoutes');
@@ -21,12 +21,10 @@ const {
 const { router: settingRout, rout } = require('./routes/settingRoutes');
 const AppError = require('./utils/appError');
 const errorHandler = require('./controllers/errorController');
-
-// dotenv.config({ path: './config.env', override: true });
-
 const app = express();
 const corsOptions = {
   origin: `${process.env.CLIENT_URL}`,
+  whitelist: `${process.env.whitelist}`,
   credentials: true,
 };
 app.use(cors(corsOptions));
@@ -107,6 +105,9 @@ app.all('/*path', (req, res, next) => {
   const err = new AppError(
     `Can't find ${req.originalUrl} on this server!`,
     404,
+  );
+  logger.error(
+    `${err.statusCode} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`,
   );
   next(err);
 });

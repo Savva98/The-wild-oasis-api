@@ -1,5 +1,6 @@
 const { sanitizeQuery } = require('./sanitizeQuery');
 class ApiFeatures {
+  startingCursor = null;
   constructor(query, queryString) {
     this.query = query;
     this.queryString = queryString;
@@ -32,6 +33,8 @@ class ApiFeatures {
       'fields',
       'date',
       'dateFrom',
+      'cursor',
+      'direction',
     ];
     excludeFields.forEach((el) => delete queryObj[el]);
     const emptyObject = {};
@@ -66,7 +69,7 @@ class ApiFeatures {
       const sortBy = this.queryString.sort.split(',').join('');
       this.query = this.query.sort(sortBy);
     } else {
-      this.query = this.query.sort('name');
+      this.query = this.query.sort({ _id: 1 }); // Default sort by _id ascending
     }
     return this;
   }
@@ -81,11 +84,42 @@ class ApiFeatures {
     return this;
   }
 
-  paginate() {
+  async createCursor(count) {
     const page = this.queryString.page * 1 || 1;
     const limit = this.queryString.limit * 1 || 10;
-    const skip = (page - 1) * limit;
-    this.query = this.query.skip(skip).limit(limit);
+    if (page > 1 && !this.queryString.cursor) {
+      const skip = (page - 1) * limit;
+      const doc = await this.query
+        .clone()
+        .skip(skip - ((count - 1) % limit))
+        .limit(1)
+        .select('_id');
+      this.startingCursor = doc[0]?._id;
+    }
+    return this;
+  }
+
+  paginate() {
+    const limit = this.queryString.limit * 1 || 10;
+    if (!this.queryString.cursor && this.startingCursor) {
+      this.queryString.cursor = this.startingCursor;
+    }
+    const { cursor, direction = 'next' } = this.queryString;
+    if (direction !== 'next' && direction !== 'previous') {
+      throw new Error('Invalid direction value');
+    }
+    if (cursor && direction === 'next') {
+      this.query = this.query.find({ _id: { $gt: cursor } }).limit(limit + 1);
+    } else if (cursor && direction !== 'next') {
+      this.query = this.query
+        .find({ _id: { $lt: cursor } })
+        .sort({ _id: -1 })
+        .limit(limit);
+    } else {
+      this.query = this.query
+        .sort({ _id: direction === 'next' ? 1 : -1 })
+        .limit(limit + 1);
+    }
     return this;
   }
 

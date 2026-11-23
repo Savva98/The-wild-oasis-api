@@ -8,15 +8,12 @@ const QRcode = require('qrcode');
 const AppError = require('../utils/appError');
 
 const Guest = require('../models/guestModel');
-const TempLoginSession = require('../models/tempLoginSessionSchema');
 const BlacklistToken = require('../models/blackListTokenModel');
 
 const Email = require('../utils/email');
 const {
-  logoutByDeletingRefreshToken,
+  deletingRefreshToken,
   createSendToken,
-  loginWithMFA,
-  verifyMFADuringLogin,
 } = require('./securetyController');
 
 const signUp = catchAsync(async (req, res, next) => {
@@ -24,76 +21,63 @@ const signUp = catchAsync(async (req, res, next) => {
     name: `Wild Oasis Login: ${req.email}`,
     issuer: 'Wild Oasis Hotel',
   });
+  const { deviceInfo } = req;
   const user = await Guest.create({
     fullName: req.body.fullName,
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.password,
     totpSecret: totpSecret.base32,
+    devices: [deviceInfo],
   });
   user.totpSecret = undefined;
   createSendToken(user, 201, res);
 });
 const login = catchAsync(async (req, res, next) => {
   if (req.cookies.jwt && req.cookies.jwt !== 'loggedout') {
-    return next(new AppError('You are already logged in', 400));
+    return res.status(200).json({
+      status: 'success',
+      message: 'You are already logged in',
+    });
   }
+  const { deviceInfo } = req;
   const { email, password } = req.body;
   if (!email || !password) {
     return next(new AppError('Please provide email and password', 400));
   }
-  const guest = await Guest.findOne({ email }).select(
-    '+password +csrfToken +csrfTokenExpires',
-  );
+  let guest = await Guest.findOne({ email }).select('+password +authenticated');
+
   if (!guest || !(await guest.correctPassword(password, guest.password))) {
-    console.log(`Failed login attempt for email: ${email} from IP: ${req.ip}`);
     return next(new AppError('Incorrect email or password', 401));
   }
+  await guest.addDevice(deviceInfo);
+  console.log('password');
   if (guest.isMfActive) {
     req.authenticatedUser = guest;
     req.loginSuccess = true;
     return next();
   }
-  createSendToken(guest, 200, res, req);
+  req.createRefreshToken = true;
+
+  createSendToken(guest, 200, res, req, next);
 });
 const logout = catchAsync(async (req, res, next) => {
-  let token = req.cookies.jwt;
-  if (
-    !token &&
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    token = req.headers.authorization.split(' ')[1];
+  const token = req.cookies.jwt;
+  if (!token && req.authenticatedUser) {
+    req.authenticatedUser = null;
+    req.loginSuccess = false;
+    return next();
   }
-  if (!token) {
-    return next(new AppError('You are not logged in', 401));
-  }
-  await logoutByDeletingRefreshToken(token, res);
+  await deletingRefreshToken(token, res, decoded);
   res.cookie('jwt', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
   });
-  res.status(200).json({ status: 'success' });
+  res.status(200).json({ status: 'success', message: 'You are logged out!' });
 });
-const protectLoginMFA = catchAsync(async (req, res, next) => {
-  const { authenticatedUser } = req;
-  if (!req.loginSuccess && !authenticatedUser) {
-    return next(new AppError('MFA login session not found', 400));
-  }
-  next();
-});
-const loginWithActivatedMFA = catchAsync(async (req, res, next) => {
-  const { sessionId, totpToken } = req.body;
-  if (!sessionId || !totpToken) {
-    return await loginWithMFA(authenticatedUser, res);
-  }
-  await verifyMFADuringLogin(sessionId, totpToken, next);
-  createSendToken(authenticatedUser, 200, res, req);
-  return;
-});
-
 const protect = catchAsync(async (req, res, next) => {
   let token;
+  console.log(req.headers);
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
@@ -106,8 +90,11 @@ const protect = catchAsync(async (req, res, next) => {
     return next(new AppError('You are not logged in', 401));
   }
   const blackList = await BlacklistToken.findOne({ token });
+  console.log(token);
+
   if (blackList) {
-    await logoutByDeletingRefreshToken(token, res);
+    const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+    await deletingRefreshToken(token, res, decoded, false);
     res.cookie('jwt', 'loggedout', {
       expires: new Date(Date.now() + 10 * 1000),
       httpOnly: true,
@@ -119,7 +106,9 @@ const protect = catchAsync(async (req, res, next) => {
   try {
     // Verify the token
     decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+    console.log(decoded);
   } catch (err) {
+    console.log(err);
     if (err.name === 'TokenExpiredError') {
       return next(
         new AppError('Token expired. Please refresh your token.', 401),
@@ -127,12 +116,14 @@ const protect = catchAsync(async (req, res, next) => {
     }
     return next(new AppError('Invalid token', 403));
   }
-
   const currentGuest = await Guest.findById(decoded.id);
   if (!currentGuest) {
     return next(
       new AppError('The user belonging to this token no longer exist.', 401),
     );
+  }
+  if (currentGuest.authenticated === false) {
+    return next(new AppError('You are logged out. Please log in again.', 401));
   }
   if (currentGuest.changedPasswordAfter(decoded.iat)) {
     await logoutByDeletingRefreshToken(token, res);
@@ -145,6 +136,7 @@ const protect = catchAsync(async (req, res, next) => {
     );
   }
   req.user = currentGuest;
+  if (req.authenticatedUser) req.authenticatedUser = null;
   next();
 });
 
@@ -167,7 +159,7 @@ const forgotPassword = catchAsync(async (req, res, next) => {
   }
   const guest = await Guest.findOne({ email: email });
   if (!guest) {
-    return next(new AppError('There is no user with email address.', 404));
+    return next(new AppError('There is no user with this email address.', 404));
   }
   const resetToken = guest.createPasswordResetToken();
   await guest.save({ validateBeforeSave: false });
@@ -185,7 +177,10 @@ const forgotPassword = catchAsync(async (req, res, next) => {
     guest.passwordResetExpires = undefined;
     await guest.save({ validateBeforeSave: false });
     return next(
-      new AppError('There was an error sending the email. Try again later!'),
+      new AppError(
+        'There was an error sending the email. Try again later!',
+        500,
+      ),
       500,
     );
   }
@@ -235,40 +230,50 @@ const resetPassword = catchAsync(async (req, res, next) => {
 const sendTwoFactorCodeToCurrentlyLoginuser = catchAsync(
   async (req, res, next) => {
     const { path } = req;
-    const guest = await Guest.findById(req.user._id).select('+totpSecret');
-    if (guest.isMfActive && path !== '/api/v1/sanctum/2fa/updatePassword') {
+    const guest = await Guest.findById(req.user._id).select(
+      '+totpSecret +totpExpires',
+    );
+    if (
+      guest.isMfActive &&
+      guest.totpSecret &&
+      path !== '/api/v1/sanctum/2fa/updatePassword'
+    ) {
       return next(
         new AppError('Two factor authentication is already enabled', 400),
       );
     }
     let secret;
     if (!guest.totpSecret) {
-      const secret = speakeasy.generateSecret({
+      secret = speakeasy.generateSecret({
         name: `Wild Oasis Login: ${req.user.email}`,
         issuer: 'Wild Oasis Hotel',
-      }).base32;
-      secret = await guest.addSecret(secret);
+      });
+      await guest.addSecret(secret);
+    }
+    if (path === '/api/v1/sanctum/2fa/updatePassword' && !guest.isMfActive) {
+      await new Email(
+        guest,
+        `${req.protocol}://${req.get(
+          'host',
+        )}/api/v1/sanctum/updatePassword/${secret.base32}}`,
+        secret.base32,
+      ).sendPasswordUpdateVarificationCodeWirhNoMFA();
+      res.status(200).json({
+        status: 'success',
+        message: 'Your Two Factory code was sent to the email!',
+      });
+      return;
     }
     const qrCodeUrl = await QRcode.toDataURL(
       guest.totpSecret ? guest.totpSecret.otpauth_url : secret.otpauth_url,
     );
-    const qrCodeTerminal = await QRcode.toString(
-      guest.totpSecret ? guest.totpSecret.otpauth_url : secret.otpauth_url,
-      {
-        type: 'terminal',
-      },
-    );
-
     await new Email(guest).sendTwoFactorQrCode(
       qrCodeUrl,
       guest.totpSecret ? guest.totpSecret.base32 : secret.base32,
     );
-    console.log(
-      `QR Code for ${guest.email}:\n${qrCodeTerminal}\nManual Key: ${guest.totpSecret ? guest.totpSecret.base32 : secret.otpauth_url.base32}`,
-    );
     res.status(200).json({
       status: 'success',
-      message: 'Your Two Factory code was sent to the email!',
+      message: 'Your Two Factory QRcode was sent to the email!',
     });
   },
 );
@@ -283,7 +288,6 @@ const twoFctortest = catchAsync(async (req, res, next) => {
     name: `Wild Oasis Hotel: ${email}`,
     issuer: 'Wild Oasis Hotel',
   });
-  console.log(secret.base32);
 
   const qrCodeUrl = await QRcode.toDataURL(secret.otpauth_url);
   // const qrCodeTerminal = await QRcode.toString(secret.otpauth_url);
@@ -329,8 +333,24 @@ const updatePassword = catchAsync(async (req, res, next) => {
     return next(new AppError('Please provide two factor code', 400));
   }
   const guest = await Guest.findById(req.user._id).select(
-    '+password +totpSecret',
+    '+password +totpSecret, +totpExpires',
   );
+  if (!password || !passwordConfirm || !currentPassword) {
+    return next(
+      new AppError(
+        'Please provide password, passwordConfirm and currentPassword',
+        400,
+      ),
+    );
+  }
+  if (!guest.isMfActive && guest.totpExpires < Date.now()) {
+    return next(
+      new AppError(
+        'Two factor code has expired, please request a new one',
+        400,
+      ),
+    );
+  }
   const isValid = speakeasy.totp.verify({
     secret: guest.totpSecret,
     encoding: 'base32',
@@ -359,6 +379,9 @@ const updatePassword = catchAsync(async (req, res, next) => {
 
   guest.password = password;
   guest.passwordConfirm = passwordConfirm;
+  if (guest.isMfActive === false) {
+    guest.totpSecret = undefined;
+  }
   await guest.save();
   createSendToken(guest, 200, res);
 });
@@ -374,7 +397,5 @@ module.exports = {
   sendTwoFactorCodeToCurrentlyLoginuser,
   activateTwoFactory,
   updatePassword,
-  loginWithActivatedMFA,
-  protectLoginMFA,
   twoFctortest,
 };

@@ -9,10 +9,12 @@ const resizeOne = catchAsync(async (req, res, next) => {
     `../../Front-end/public/img/cabins`,
   );
   const imageId = crypto.randomBytes(5).toString('hex');
-  req.body.image = `cabin-${req.body.name}-${imageId}-${Date.now()}.jpeg`;
+  req.body.image = `cabin-${req.body.name}-${imageId}-${Date.now()}.avif`;
   await sharp(req.files.image[0].buffer)
     .resize(2000, 1333)
-    .toFormat('jpeg')
+    .toFormat('avif' || 'webp' || 'jpeg')
+    .avif({ quality: 90 })
+    .webp({ quality: 90 })
     .jpeg({ quality: 90 })
     .toFile(`${cabinImagePath}/${req.body.image}`);
 });

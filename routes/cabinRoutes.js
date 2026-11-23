@@ -12,28 +12,27 @@ const {
   resizeCabinImages,
 } = require('../controllers/cabinsContoller');
 const { protect, restrictTo } = require('../controllers/authController');
+const { validateCSRFToken } = require('../controllers/csrfTokenController');
 
 const cabinRout = '/api/v1/cabins';
 const router = express.Router();
-
+router.use(protect);
 router.get('/', getAllCabins);
 router.route('/top-5-cheap').get(top5CheapCabins, getAllCabins);
+router.use(restrictTo('admin'), validateCSRFToken);
 router
   .route('/:id')
   .get(getCabin)
   .patch(
-    // protect,
-    // restrictTo('admin'),
     uploadCabinImages,
     resizeCabinImages,
     checkCabinName,
     checkUploadedData,
     updateCabin,
   )
-  .delete(protect, restrictTo('admin'), deleteCabin);
+  .delete(deleteCabin);
 router
   .route('/addCabin')
-  // .post(protect, restrictTo('admin'), checkUploadedData, addCabin);
   .post(
     uploadCabinImages,
     resizeCabinImages,

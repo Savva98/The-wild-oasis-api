@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const process = require('process');
 
 const bookingSchema = new mongoose.Schema(
   {
@@ -17,6 +18,11 @@ const bookingSchema = new mongoose.Schema(
     numberOfNights: {
       type: Number,
       required: [true, 'Please provide the number of nights!'],
+    },
+    extraPrice: {
+      type: Number,
+      default: 0,
+      min: [0, 'Extra price cannot be negative!'],
     },
     guestId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -50,13 +56,7 @@ const bookingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: [
-        'unconfirmed',
-        'confirmed',
-        'checked-in',
-        'checked-out',
-        'canceled',
-      ],
+      enum: ['unconfirmed', 'checked-in', 'checked-out', 'canceled'],
       default: 'unconfirmed',
     },
   },
@@ -69,7 +69,7 @@ const bookingSchema = new mongoose.Schema(
 bookingSchema.pre(/^find/, function (next) {
   this.populate({
     path: 'guestId',
-    select: 'fullName email nationality countryFlag',
+    select: 'fullName email nationality countryFlag nationalID',
   }).populate({
     path: 'cabinId',
     select: 'name regularPrice discount',
@@ -89,9 +89,36 @@ bookingSchema.pre('save', function (next) {
   }
   this.totalPrice *= this.numberOfNights;
   if (this.hasBreakfast) {
-    this.totalPrice += this.numberOfNights * 20 * this.numGuests;
+    this.totalPrice +=
+      this.numberOfNights * process.env.BREAKFAST_PRICE * this.numGuests;
   }
+  next();
+});
 
+bookingSchema.pre('findOneAndUpdate', function (next) {
+  const update = this.getUpdate();
+  if (
+    update.startDate ||
+    update.endDate ||
+    update.hasBreakfast ||
+    update.numGuests
+  ) {
+    if (update.hasBreakfast !== undefined) {
+      this._hasBreakfast = update.hasBreakfast;
+      if (this._hasBreakfast) {
+        this._totalPrice =
+          (this._totalPrice || 0) +
+          this.numberOfNights *
+            process.env.BREAKFAST_PRICE *
+            (update.numGuests || this.numGuests);
+        this._extraPrice =
+          (this._extraPrice || 0) +
+          this.numberOfNights *
+            process.env.BREAKFAST_PRICE *
+            (update.numGuests || this.numGuests);
+      }
+    }
+  }
   next();
 });
 

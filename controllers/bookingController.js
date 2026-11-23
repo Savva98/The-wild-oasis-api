@@ -1,6 +1,7 @@
 const Booking = require('../models/bookingModel');
 const AppError = require('../utils/appError');
-const { getAll, deleteOne } = require('./handleFactory');
+// const { catchAsync } = require('../utils/catchAsync');
+const { getAll, deleteOne, getOne, updateOne } = require('./handleFactory');
 
 const getTodayActivity = async (req, res, next) => {
   const today = new Date();
@@ -101,6 +102,8 @@ const checkIfBookingCabinIsPaid = (req, res, next) => {
 const deleteBooking = deleteOne(Booking);
 
 const getAllBookings = getAll(Booking);
+const getBookingById = getOne(Booking);
+const updateBoking = updateOne(Booking);
 
 module.exports = {
   getTodayActivity,
@@ -108,4 +111,6 @@ module.exports = {
   checkIfBookingCabinIsPaid,
   getStaysAfterDate,
   deleteBooking,
+  getBookingById,
+  updateBoking,
 };

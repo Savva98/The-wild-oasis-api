@@ -11,10 +11,12 @@ const resizeAll = catchAsync(async (req, res, next) => {
   req.body.images = [];
   await Promise.all(
     req.files.images.map(async (file, i) => {
-      const filename = `cabin-${req.params.id}${crypto.randomBytes(5).toString('hex')}-${Date.now()}-${i + 1}.jpeg`;
+      const filename = `cabin-${req.params.id}${crypto.randomBytes(5).toString('hex')}-${Date.now()}-${i + 1}.avif`;
       await sharp(file.buffer)
         .resize(2000, 1333)
-        .toFormat('jpeg')
+        .toFormat('avif' || 'webp' || 'jpeg')
+        .avif({ quality: 90 })
+        .webp({ quality: 90 })
         .jpeg({ quality: 90 })
         .toFile(`${cabinImagePath}/${filename}`);
       req.body.images.push(filename);

@@ -1,15 +1,16 @@
 const TempLoginSession = require('../models/tempLoginSessionSchema');
+const logger = require('../logEvents');
 
 const cleanupExpiredSessions = async () => {
   try {
     const result = await TempLoginSession.deleteMany({
       expiresAt: { $lt: new Date() },
     });
-    console.log(
+    logger.info(
       `Cleanup: Deleted ${result.deletedCount} expired temporary login sessions.`,
     );
   } catch (error) {
-    console.error('Error during cleanup of expired sessions:', error);
+    logger.error('Error during cleanup of expired sessions:', error);
   }
 };
 

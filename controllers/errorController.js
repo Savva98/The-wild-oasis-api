@@ -1,4 +1,5 @@
 const AppError = require('../utils/appError');
+const logger = require('../utils/logEvents');
 
 const sendErrorDev = (err, req, res) => {
   if (req.originalUrl.startsWith('/api')) {
@@ -72,6 +73,9 @@ const handleValidationErrorDB = (err) => {
 const errorFunc = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
+  logger.error(
+    `${err.statusCode} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`,
+  );
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, req, res);
   } else if (process.env.NODE_ENV === 'production') {
